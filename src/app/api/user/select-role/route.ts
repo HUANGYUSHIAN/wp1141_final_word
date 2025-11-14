@@ -32,6 +32,10 @@ export async function POST(request: Request) {
     }
 
     // 如果已經有身分，不允許更改（除非是管理員）
+    if (!user.isUserIdConfirmed) {
+      return NextResponse.json({ error: "請先設定 User ID" }, { status: 400 });
+    }
+
     if (user.dataType && user.dataType !== "Admin") {
       return NextResponse.json({ error: "您已經選擇過身分" }, { status: 400 });
     }

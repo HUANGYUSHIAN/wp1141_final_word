@@ -221,6 +221,7 @@ export const localUserDb = {
       language: data.language || null,
       isLock: data.isLock || false,
       dataType: data.dataType || null,
+      isUserIdConfirmed: data.isUserIdConfirmed ?? false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

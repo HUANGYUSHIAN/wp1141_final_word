@@ -120,6 +120,7 @@ export const authOptions: NextAuthOptions = {
           email,
           name,
           image,
+          isUserIdConfirmed: false,
         };
 
         console.log("[SignIn] Creating new user with data:", userData);
@@ -148,6 +149,13 @@ export const authOptions: NextAuthOptions = {
             image,
           },
         });
+
+        if (dbUser.isUserIdConfirmed === undefined) {
+          dbUser = await prisma.user.update({
+            where: { googleId },
+            data: { isUserIdConfirmed: true },
+          });
+        }
         console.log("[SignIn] Updated existing user:", { userId: dbUser.userId });
         finalUserId = dbUser.userId;
         isCurrentUserNew = false;
@@ -220,8 +228,13 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
-    async session({ session, token }) {
+    async session({ session, token, trigger, newSession }) {
       console.log("[Session] token.userId:", token.userId, "tokenKeys:", Object.keys(token));
+
+      if (trigger === "update" && newSession?.userId) {
+        console.log("[Session] Updating token.userId via client request:", newSession.userId);
+        token.userId = newSession.userId as string;
+      }
 
       if (token.userId) {
         session.userId = token.userId as string;
