@@ -9,6 +9,7 @@
 import * as dotenv from "dotenv";
 import * as fs from "fs";
 import * as path from "path";
+import { initLocalDb } from "../src/lib/local-db";
 
 dotenv.config();
 
@@ -21,15 +22,7 @@ const ADMINS_FILE = path.join(DB_DIR, "admins.json");
 
 // 初始化本地資料庫
 if (useLocalDb) {
-  if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(USERS_FILE)) {
-    fs.writeFileSync(USERS_FILE, JSON.stringify([], null, 2), "utf-8");
-  }
-  if (!fs.existsSync(ADMINS_FILE)) {
-    fs.writeFileSync(ADMINS_FILE, JSON.stringify([], null, 2), "utf-8");
-  }
+  initLocalDb();
 }
 
 // 根據環境選擇使用本地或 MongoDB
@@ -189,7 +182,9 @@ async function createAdmin() {
     console.error("❌ 創建管理員帳號失敗:", error);
     process.exit(1);
   } finally {
-    await prisma.$disconnect();
+    if (!useLocalDb && prisma.$disconnect) {
+      await prisma.$disconnect();
+    }
   }
 }
 
