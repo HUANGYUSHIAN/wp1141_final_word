@@ -22,7 +22,7 @@ npm install
 
 ### 2. 設定環境變數
 
-創建 `.env` 文件並填入以下內容：
+創建 `.env` 文件並填入以下內容（如果要連遠端 MongoDB，請參考 `docs/REMOTE_DB_SETUP.md` 取得完整指引）：
 
 ```env
 # Database

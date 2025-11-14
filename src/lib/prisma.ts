@@ -71,11 +71,45 @@ function createLocalPrisma() {
       delete: localVocabularyDb.delete,
     },
     word: {
-      findMany: async (where: { vocabularyId: string }, options?: any) => {
-        return localWordDb.findMany(where, options);
+      findMany: async (options?: {
+        where?: { vocabularyId?: string };
+        skip?: number;
+        take?: number;
+        orderBy?: any;
+      }) => {
+        const where = options?.where || {};
+        if (!where.vocabularyId) {
+          throw new Error("word.findMany 需要指定 vocabularyId");
+        }
+        return localWordDb.findMany(
+          { vocabularyId: where.vocabularyId },
+          {
+            skip: options?.skip,
+            take: options?.take,
+            orderBy: options?.orderBy,
+          }
+        );
       },
-      count: localWordDb.count,
-      createMany: localWordDb.createMany,
+      count: async (options?: { where?: { vocabularyId?: string } }) => {
+        const where = options?.where || {};
+        if (!where.vocabularyId) {
+          throw new Error("word.count 需要指定 vocabularyId");
+        }
+        return localWordDb.count({ vocabularyId: where.vocabularyId });
+      },
+      createMany: async (options: { data: any[] } | any[]) => {
+        const payload = Array.isArray(options)
+          ? options
+          : Array.isArray((options as any)?.data)
+          ? (options as any).data
+          : undefined;
+
+        if (!payload) {
+          throw new Error("word.createMany 需要 data 陣列");
+        }
+
+        return localWordDb.createMany(payload as any[]);
+      },
     },
     coupon: {
       findUnique: async (where: { couponId: string }) => {

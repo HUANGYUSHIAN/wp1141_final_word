@@ -56,7 +56,7 @@ export async function POST(
       sentence: word.sentence || null,
     }));
 
-    await prisma.word.createMany(wordData);
+    await prisma.word.createMany({ data: wordData });
 
     return NextResponse.json({ success: true, count: words.length });
   } catch (error: any) {

@@ -40,21 +40,21 @@ export async function GET(
       return NextResponse.json({ error: "找不到單字本" }, { status: 404 });
     }
 
-    // 根據是否使用本地資料庫決定查詢方式
     const useLocalDb = process.env.DATABASE_local === "true";
-    
+    const vocabularyFilter = {
+      vocabularyId: useLocalDb ? vocabularyId : (vocabulary as any).id,
+    };
+
     const [words, total] = await Promise.all([
-      prisma.word.findMany(
-        useLocalDb ? { vocabularyId } : { vocabularyId: (vocabulary as any).id },
-        {
-          skip,
-          take: limit,
-          orderBy: { createdAt: "asc" },
-        }
-      ),
-      prisma.word.count(
-        useLocalDb ? { vocabularyId } : { vocabularyId: (vocabulary as any).id }
-      ),
+      prisma.word.findMany({
+        where: vocabularyFilter,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.word.count({
+        where: vocabularyFilter,
+      }),
     ]);
 
     return NextResponse.json({
