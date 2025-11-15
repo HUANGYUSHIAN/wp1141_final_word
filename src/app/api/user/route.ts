@@ -32,7 +32,6 @@ export async function GET() {
             image: true,
             dataType: true,
             isLock: true,
-            isUserIdConfirmed: true,
           },
         });
 
@@ -99,7 +98,6 @@ export async function GET() {
       email: user.email,
       image: user.image,
       dataType: user.dataType,
-      isUserIdConfirmed: user.isUserIdConfirmed ?? true,
     });
   } catch (error: any) {
     console.error("Error fetching user:", error);

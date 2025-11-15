@@ -221,7 +221,6 @@ export const localUserDb = {
       language: data.language || null,
       isLock: data.isLock || false,
       dataType: data.dataType || null,
-      isUserIdConfirmed: data.isUserIdConfirmed ?? false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -291,12 +290,54 @@ export const localStudentDb = {
     const newStudent = {
       id: generateObjectId(),
       ...data,
+      lvocabuIDs: data.lvocabuIDs || [],
+      lcouponIDs: data.lcouponIDs || [],
+      lfriendIDs: data.lfriendIDs || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     students.push(newStudent);
     writeData(DB_FILES.students, students);
     return newStudent;
+  },
+
+  update: async (where: { userId: string }, data: any) => {
+    const students = readData<any>(DB_FILES.students);
+    const index = students.findIndex((s) => s.userId === where.userId);
+    if (index === -1) {
+      throw new Error("Student not found");
+    }
+    
+    // 處理數組字段的更新（如 lvocabuIDs 的 push）
+    if (data.lvocabuIDs && typeof data.lvocabuIDs === 'object' && data.lvocabuIDs.push) {
+      // Prisma 的 push 操作：{ lvocabuIDs: { push: "vocabularyId" } }
+      const existingIds = students[index].lvocabuIDs || [];
+      const newId = data.lvocabuIDs.push;
+      if (!existingIds.includes(newId)) {
+        existingIds.push(newId);
+      }
+      students[index] = {
+        ...students[index],
+        lvocabuIDs: existingIds,
+        updatedAt: new Date().toISOString(),
+      };
+    } else if (data.lvocabuIDs && Array.isArray(data.lvocabuIDs)) {
+      // 直接設置數組（用於移除操作）
+      students[index] = {
+        ...students[index],
+        lvocabuIDs: data.lvocabuIDs,
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      students[index] = {
+        ...students[index],
+        ...data,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    
+    writeData(DB_FILES.students, students);
+    return students[index];
   },
 
   delete: async (where: { userId: string }) => {
@@ -372,8 +413,10 @@ export const localVocabularyDb = {
       }
       if (options.include._count) {
         const words = readData<any>(DB_FILES.words);
+        // 計算單字數：words 的 vocabularyId 應該匹配 vocabulary.id
+        const wordCount = words.filter((w: any) => w.vocabularyId === vocabulary.id).length;
         vocabulary._count = {
-          words: words.filter((w) => w.vocabularyId === vocabulary.id).length,
+          words: wordCount,
         };
       }
     }
@@ -381,8 +424,58 @@ export const localVocabularyDb = {
     return vocabulary;
   },
 
-  findMany: async (options?: { skip?: number; take?: number; orderBy?: any; include?: any }) => {
+  findMany: async (options?: { skip?: number; take?: number; orderBy?: any; include?: any; where?: any }) => {
     let vocabularies = readData<any>(DB_FILES.vocabularies);
+    
+    // 過濾條件
+    if (options?.where) {
+      // Name 過濾（部分匹配）
+      if (options.where.name?.contains) {
+        const searchName = options.where.name.contains.toLowerCase();
+        vocabularies = vocabularies.filter((v: any) =>
+          v.name?.toLowerCase().includes(searchName)
+        );
+      }
+      
+      // LangUse 過濾（支援多選）
+      if (options.where.langUse?.in) {
+        const langUseValues = options.where.langUse.in;
+        vocabularies = vocabularies.filter((v: any) =>
+          langUseValues.includes(v.langUse)
+        );
+      }
+      
+      // LangExp 過濾（支援多選）
+      if (options.where.langExp?.in) {
+        const langExpValues = options.where.langExp.in;
+        vocabularies = vocabularies.filter((v: any) =>
+          langExpValues.includes(v.langExp)
+        );
+      }
+      
+      // Establisher 過濾
+      if (options.where.establisher) {
+        if (options.where.establisher.not) {
+          // 排除特定建立者
+          vocabularies = vocabularies.filter((v: any) =>
+            v.establisher !== options.where.establisher.not
+          );
+        } else {
+          // 匹配特定建立者
+          vocabularies = vocabularies.filter((v: any) =>
+            v.establisher === options.where.establisher
+          );
+        }
+      }
+      
+      // VocabularyId 過濾（用於 in 操作）
+      if (options.where.vocabularyId?.in) {
+        const vocabularyIds = options.where.vocabularyId.in;
+        vocabularies = vocabularies.filter((v: any) =>
+          vocabularyIds.includes(v.vocabularyId)
+        );
+      }
+    }
     
     // 排序
     if (options?.orderBy) {
@@ -401,12 +494,18 @@ export const localVocabularyDb = {
     if (options?.include) {
       if (options.include._count) {
         const words = readData<any>(DB_FILES.words);
-        vocabularies = vocabularies.map((v: any) => ({
-          ...v,
-          _count: {
-            words: words.filter((w) => w.vocabularyId === v.id).length,
-          },
-        }));
+        vocabularies = vocabularies.map((v: any) => {
+          // 計算單字數：words 的 vocabularyId 應該匹配 vocabulary.id
+          // 在本地資料庫中，words.vocabularyId 存儲的是 vocabulary.id（內部 ID）
+          const wordCount = words.filter((w: any) => w.vocabularyId === v.id).length;
+          
+          return {
+            ...v,
+            _count: {
+              words: wordCount,
+            },
+          };
+        });
       }
     }
     
@@ -416,8 +515,43 @@ export const localVocabularyDb = {
     return vocabularies.slice(skip, skip + take);
   },
 
-  count: async () => {
-    const vocabularies = readData<any>(DB_FILES.vocabularies);
+  count: async (where?: any) => {
+    let vocabularies = readData<any>(DB_FILES.vocabularies);
+    
+    // 如果有過濾條件，先過濾
+    if (where) {
+      // Name 過濾
+      if (where.name?.contains) {
+        const searchName = where.name.contains.toLowerCase();
+        vocabularies = vocabularies.filter((v: any) =>
+          v.name?.toLowerCase().includes(searchName)
+        );
+      }
+      
+      // LangUse 過濾
+      if (where.langUse?.in) {
+        const langUseValues = where.langUse.in;
+        vocabularies = vocabularies.filter((v: any) =>
+          langUseValues.includes(v.langUse)
+        );
+      }
+      
+      // LangExp 過濾
+      if (where.langExp?.in) {
+        const langExpValues = where.langExp.in;
+        vocabularies = vocabularies.filter((v: any) =>
+          langExpValues.includes(v.langExp)
+        );
+      }
+      
+      // Establisher 過濾
+      if (where.establisher) {
+        vocabularies = vocabularies.filter((v: any) =>
+          v.establisher === where.establisher
+        );
+      }
+    }
+    
     return vocabularies.length;
   },
 
@@ -529,6 +663,45 @@ export const localWordDb = {
     words.push(...newWords);
     writeData(DB_FILES.words, words);
     return { count: newWords.length };
+  },
+
+  update: async (where: { id: string }, data: any) => {
+    const words = readData<any>(DB_FILES.words);
+    const index = words.findIndex((w) => w.id === where.id);
+    if (index === -1) {
+      throw new Error("Word not found");
+    }
+    words[index] = {
+      ...words[index],
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    writeData(DB_FILES.words, words);
+    return words[index];
+  },
+
+  create: async (data: any) => {
+    const words = readData<any>(DB_FILES.words);
+    const vocabularies = readData<any>(DB_FILES.vocabularies);
+    
+    // 如果 vocabularyId 是 vocabularyId（不是 id），需要轉換
+    let vocabId = data.vocabularyId;
+    const vocabulary = vocabularies.find((v: any) => v.vocabularyId === data.vocabularyId);
+    if (vocabulary) {
+      vocabId = vocabulary.id;
+    }
+    
+    const newWord = {
+      id: generateObjectId(),
+      ...data,
+      vocabularyId: vocabId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    words.push(newWord);
+    writeData(DB_FILES.words, words);
+    return newWord;
   },
 };
 

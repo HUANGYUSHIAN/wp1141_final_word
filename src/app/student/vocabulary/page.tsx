@@ -21,13 +21,20 @@ import {
   Typography,
   CircularProgress,
   Alert,
-  Tabs,
-  Tab,
+  Grid,
+  Card,
+  CardContent,
 } from "@mui/material";
+import SaveIcon from "@mui/icons-material/Save";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
+import EditIcon from "@mui/icons-material/Edit";
+import SearchIcon from "@mui/icons-material/Search";
 import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
+import VocabularyUpload from "@/components/VocabularyUpload";
+import LanguageSelect, { LANGUAGE_OPTIONS } from "@/components/LanguageSelect";
+import { useSession } from "next-auth/react";
 
 interface Vocabulary {
   vocabularyId: string;
@@ -35,79 +42,62 @@ interface Vocabulary {
   langUse: string;
   langExp: string;
   copyrights: string | null;
+  establisher: string;
   wordCount: number;
   createdAt: string;
-  isOwned: boolean;
+  isInMyList?: boolean; // 用於 browse 頁面，標記是否已在列表中
 }
-
-interface Word {
-  id: string;
-  word: string;
-  spelling: string | null;
-  explanation: string;
-  partOfSpeech: string | null;
-  sentence: string | null;
-}
-
-const scopeTabs = [
-  { value: "owned", label: "我的單字本" },
-  { value: "favorites", label: "收藏的單字本" },
-];
 
 export default function StudentVocabularyPage() {
-  const [scope, setScope] = useState("owned");
-  const [vocabularies, setVocabularies] = useState<Vocabulary[]>([]);
+  const { data: session } = useSession();
+  const [myVocabularies, setMyVocabularies] = useState<Vocabulary[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-
   const [openViewDialog, setOpenViewDialog] = useState(false);
-  const [selectedVocabulary, setSelectedVocabulary] =
-    useState<Vocabulary | null>(null);
-  const [words, setWords] = useState<Word[]>([]);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [openBrowseDialog, setOpenBrowseDialog] = useState(false);
+  const [selectedVocabulary, setSelectedVocabulary] = useState<Vocabulary | null>(null);
+  const [words, setWords] = useState<any[]>([]);
+  const [editingWords, setEditingWords] = useState<any[]>([]);
   const [wordsPage, setWordsPage] = useState(0);
   const [wordsPerPage, setWordsPerPage] = useState(50);
   const [wordsTotal, setWordsTotal] = useState(0);
   const [loadingWords, setLoadingWords] = useState(false);
-  const [csvError, setCsvError] = useState("");
-  const [csvUploading, setCsvUploading] = useState(false);
-
-  const [openCreateDialog, setOpenCreateDialog] = useState(false);
-  const [createForm, setCreateForm] = useState({
+  const [savingWords, setSavingWords] = useState(false);
+  const [error, setError] = useState("");
+  const [formData, setFormData] = useState({
     name: "",
     langUse: "",
     langExp: "",
     copyrights: "",
   });
-  const [createFile, setCreateFile] = useState<File | null>(null);
-  const [creating, setCreating] = useState(false);
-  const resetCreateForm = () => {
-    setCreateForm({
-      name: "",
-      langUse: "",
-      langExp: "",
-      copyrights: "",
-    });
-    setCreateFile(null);
-  };
 
+  // Browse 相關狀態
+  const [browseVocabularies, setBrowseVocabularies] = useState<Vocabulary[]>([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browsePage, setBrowsePage] = useState(0);
+  const [browseTotal, setBrowseTotal] = useState(0);
+  const [browseFilters, setBrowseFilters] = useState({
+    name: "",
+    langUse: [] as string[],
+    langExp: [] as string[],
+  });
 
   useEffect(() => {
-    fetchVocabularies();
-  }, [scope, page, rowsPerPage]);
+    fetchMyVocabularies();
+  }, [page, rowsPerPage]);
 
-  const fetchVocabularies = async () => {
+  const fetchMyVocabularies = async () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `/api/student/vocabularies?scope=${scope}&page=${page}&limit=${rowsPerPage}`
+        `/api/student/vocabularies?page=${page}&limit=${rowsPerPage}`
       );
       if (response.ok) {
         const data = await response.json();
-        setVocabularies(data.vocabularies || []);
+        setMyVocabularies(data.vocabularies || []);
         setTotal(data.total || 0);
       } else {
         setError("載入單字本資料失敗");
@@ -128,22 +118,16 @@ export default function StudentVocabularyPage() {
       );
       if (response.ok) {
         const data = await response.json();
-        setWords(data.words || []);
+        const fetchedWords = data.words || [];
+        setWords(fetchedWords);
+        setEditingWords(fetchedWords.map((w: any) => ({ ...w })));
         setWordsTotal(data.total || 0);
-      } else {
-        setCsvError("載入單字列表失敗");
       }
     } catch (error) {
       console.error("Error fetching words:", error);
-      setCsvError("載入單字列表失敗");
     } finally {
       setLoadingWords(false);
     }
-  };
-
-  const handleChangeScope = (_: any, newValue: string) => {
-    setScope(newValue);
-    setPage(0);
   };
 
   const handleView = async (vocabulary: Vocabulary) => {
@@ -153,186 +137,211 @@ export default function StudentVocabularyPage() {
     await fetchWords(vocabulary.vocabularyId, 0);
   };
 
-  const splitCsvLine = (line: string) => {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"' && line[i - 1] !== "\\") {
-        inQuotes = !inQuotes;
-        continue;
-      }
-
-      if (char === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
+  const handleEdit = (vocabulary: Vocabulary) => {
+    // 檢查是否為建立者
+    if (vocabulary.establisher !== session?.userId) {
+      setError("無權限編輯此單字本");
+      return;
     }
-
-    if (current) {
-      result.push(current.trim());
-    }
-
-    return result.map((value) =>
-      value.replace(/^"(.*)"$/, "$1").replace(/\\"/g, '"')
-    );
+    setSelectedVocabulary(vocabulary);
+    setFormData({
+      name: vocabulary.name,
+      langUse: vocabulary.langUse,
+      langExp: vocabulary.langExp,
+      copyrights: vocabulary.copyrights || "",
+    });
+    setOpenEditDialog(true);
   };
 
-  const parseCsvContent = (content: string) => {
-    const lines = content.trim().split(/\r?\n/);
-    if (lines.length < 2) {
-      throw new Error("CSV 檔案內容不足");
-    }
-
-    const headers = splitCsvLine(lines[0]).map((h) => h.toLowerCase());
-    const wordIdx = headers.indexOf("word");
-    const spellingIdx = headers.indexOf("spelling");
-    const explanationIdx = headers.indexOf("explanation");
-    const sentenceIdx = headers.indexOf("sentence");
-
-    if (wordIdx === -1 || explanationIdx === -1) {
-      throw new Error("CSV 必須包含 Word 與 Explanation 欄位");
-    }
-
-    const rows = lines.slice(1).map((line) => splitCsvLine(line));
-
-    return rows
-      .filter((cols) => cols[wordIdx])
-      .map((cols) => ({
-        word: cols[wordIdx]?.trim(),
-        spelling: spellingIdx >= 0 ? cols[spellingIdx]?.trim() || null : null,
-        explanation: cols[explanationIdx]?.trim() || "",
-        partOfSpeech: null,
-        sentence: sentenceIdx >= 0 ? cols[sentenceIdx]?.trim() || null : null,
-      }))
-      .filter((item) => item.word && item.explanation);
-  };
-
-  const uploadWords = async (
-    vocabularyId: string,
-    wordsPayload: any[],
-    afterSuccess?: () => Promise<void> | void
-  ) => {
-    const response = await fetch(
-      `/api/student/vocabularies/${vocabularyId}/words/upload`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ words: wordsPayload }),
-      }
-    );
-
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || "匯入 CSV 失敗");
-    }
-
-    if (afterSuccess) {
-      await afterSuccess();
-    }
-  };
-
-  const handleCsvUpload = async (file: File) => {
+  const handleSaveVocabulary = async () => {
     if (!selectedVocabulary) return;
 
     try {
-      setCsvUploading(true);
-      setCsvError("");
+      const response = await fetch(
+        `/api/student/vocabularies/${selectedVocabulary.vocabularyId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        }
+      );
 
-      const text = await file.text();
-      const parsedWords = parseCsvContent(text);
-
-      if (!parsedWords.length) {
-        setCsvError("CSV 沒有可匯入的單字");
-        return;
+      if (response.ok) {
+        setOpenEditDialog(false);
+        fetchMyVocabularies();
+        setError("");
+      } else {
+        const data = await response.json();
+        setError(data.error || "更新單字本失敗");
       }
-
-      await uploadWords(selectedVocabulary.vocabularyId, parsedWords, async () => {
-        await fetchWords(selectedVocabulary.vocabularyId, wordsPage);
-        fetchVocabularies();
-      });
-
-      setSuccessMessage(`成功匯入 ${parsedWords.length} 筆單字`);
-    } catch (error: any) {
-      console.error("Error uploading CSV:", error);
-      setCsvError(error.message || "匯入 CSV 失敗");
-    } finally {
-      setCsvUploading(false);
+    } catch (error) {
+      console.error("Error updating vocabulary:", error);
+      setError("更新單字本失敗");
     }
   };
 
-  const handleCreateVocabulary = async () => {
+  const handleWordChange = (index: number, field: string, value: string) => {
+    const updated = [...editingWords];
+    updated[index] = {
+      ...updated[index],
+      [field]: value,
+    };
+    setEditingWords(updated);
+  };
+
+  const handleSaveWords = async () => {
+    if (!selectedVocabulary) return;
+
     try {
-      setCreating(true);
-      setError("");
-
-      const response = await fetch("/api/student/vocabularies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(createForm),
-      });
-      if (response.ok) {
-        const data = await response.json();
-
-        if (createFile) {
-          const text = await createFile.text();
-          const parsedWords = parseCsvContent(text);
-
-          if (parsedWords.length) {
-            await uploadWords(data.vocabulary.vocabularyId, parsedWords);
-          }
+      setSavingWords(true);
+      const response = await fetch(
+        `/api/student/vocabularies/${selectedVocabulary.vocabularyId}/words`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ words: editingWords }),
         }
+      );
 
-        setSuccessMessage(
-          createFile
-            ? "單字本建立並匯入成功"
-            : "單字本建立成功，請匯入單字"
-        );
-        setOpenCreateDialog(false);
-        resetCreateForm();
-        setScope("owned");
-        fetchVocabularies();
+      if (response.ok) {
+        await fetchWords(selectedVocabulary.vocabularyId, wordsPage);
+        setError("");
+        alert("單字儲存成功！");
       } else {
         const data = await response.json();
-        setError(data.error || "建立單字本失敗");
+        setError(data.error || "儲存單字失敗");
       }
     } catch (error) {
-      console.error("Error creating vocabulary:", error);
-      setError("建立單字本失敗");
+      console.error("Error saving words:", error);
+      setError("儲存單字失敗");
     } finally {
-      setCreating(false);
+      setSavingWords(false);
+    }
+  };
+
+  const handleBrowse = async () => {
+    setOpenBrowseDialog(true);
+    await fetchBrowseVocabularies(0);
+  };
+
+  const fetchBrowseVocabularies = async (pageNum: number = 0) => {
+    try {
+      setBrowseLoading(true);
+      const params = new URLSearchParams();
+      params.append("page", pageNum.toString());
+      params.append("limit", "10");
+      
+      if (browseFilters.name) {
+        params.append("name", browseFilters.name);
+      }
+      browseFilters.langUse.forEach((lang) => {
+        params.append("langUse", lang);
+      });
+      browseFilters.langExp.forEach((lang) => {
+        params.append("langExp", lang);
+      });
+
+      const response = await fetch(`/api/student/vocabularies/browse?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setBrowseVocabularies(data.vocabularies || []);
+        setBrowseTotal(data.total || 0);
+        setBrowsePage(pageNum);
+      }
+    } catch (error) {
+      console.error("Error browsing vocabularies:", error);
+    } finally {
+      setBrowseLoading(false);
+    }
+  };
+
+  const handleBrowseSearch = () => {
+    fetchBrowseVocabularies(0);
+  };
+
+  const isOwner = (vocabulary: Vocabulary) => {
+    return vocabulary.establisher === session?.userId;
+  };
+
+  const handleAddVocabulary = async (vocabulary: Vocabulary) => {
+    try {
+      const response = await fetch("/api/student/vocabularies/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vocabularyId: vocabulary.vocabularyId }),
+      });
+
+      if (response.ok) {
+        // 更新本地狀態
+        vocabulary.isInMyList = true;
+        // 刷新我的單字本列表
+        fetchMyVocabularies();
+        // 刷新 browse 列表
+        await fetchBrowseVocabularies(browsePage);
+      } else {
+        const data = await response.json();
+        setError(data.error || "加入單字本失敗");
+      }
+    } catch (error) {
+      console.error("Error adding vocabulary:", error);
+      setError("加入單字本失敗");
+    }
+  };
+
+  const handleRemoveVocabulary = async (vocabulary: Vocabulary) => {
+    try {
+      const response = await fetch("/api/student/vocabularies/remove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vocabularyId: vocabulary.vocabularyId }),
+      });
+
+      if (response.ok) {
+        // 更新本地狀態
+        vocabulary.isInMyList = false;
+        // 刷新我的單字本列表
+        fetchMyVocabularies();
+        // 刷新 browse 列表
+        await fetchBrowseVocabularies(browsePage);
+      } else {
+        const data = await response.json();
+        setError(data.error || "移除單字本失敗");
+      }
+    } catch (error) {
+      console.error("Error removing vocabulary:", error);
+      setError("移除單字本失敗");
     }
   };
 
   const handleDeleteVocabulary = async (vocabulary: Vocabulary) => {
-    if (!vocabulary.isOwned) return;
-    if (
-      !confirm(`確定要刪除單字本「${vocabulary.name}」嗎？刪除後無法復原。`)
-    )
-      return;
-
-    try {
-      const response = await fetch(
-        `/api/student/vocabularies/${vocabulary.vocabularyId}`,
-        {
-          method: "DELETE",
-        }
-      );
-      if (response.ok) {
-        setSuccessMessage("單字本已刪除");
-        fetchVocabularies();
-      } else {
-        const data = await response.json();
-        setError(data.error || "刪除單字本失敗");
+    // 檢查是否為建立者
+    const isOwner = vocabulary.establisher === session?.userId;
+    
+    if (isOwner) {
+      // 是建立者：刪除單字本（包含資料）
+      if (!confirm("確定要刪除此單字本嗎？此操作將永久刪除單字本及其所有單字資料，且無法復原。")) {
+        return;
       }
-    } catch (error) {
-      console.error("Error deleting vocabulary:", error);
-      setError("刪除單字本失敗");
+
+      try {
+        const response = await fetch(`/api/student/vocabularies/${vocabulary.vocabularyId}`, {
+          method: "DELETE",
+        });
+
+        if (response.ok) {
+          fetchMyVocabularies();
+          setError("");
+        } else {
+          const data = await response.json();
+          setError(data.error || "刪除單字本失敗");
+        }
+      } catch (error) {
+        console.error("Error deleting vocabulary:", error);
+        setError("刪除單字本失敗");
+      }
+    } else {
+      // 不是建立者：只從列表中移除
+      await handleRemoveVocabulary(vocabulary);
     }
   };
 
@@ -342,25 +351,12 @@ export default function StudentVocabularyPage() {
         <Typography variant="h4">我的單字本</Typography>
         <Button
           variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setOpenCreateDialog(true)}
+          startIcon={<SearchIcon />}
+          onClick={handleBrowse}
         >
-          新增單字本
+          瀏覽單字本
         </Button>
       </Box>
-
-      <Paper sx={{ mb: 3 }}>
-        <Tabs
-          value={scope}
-          onChange={handleChangeScope}
-          indicatorColor="primary"
-          textColor="primary"
-        >
-          {scopeTabs.map((tab) => (
-            <Tab key={tab.value} label={tab.label} value={tab.value} />
-          ))}
-        </Tabs>
-      </Paper>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
@@ -368,16 +364,18 @@ export default function StudentVocabularyPage() {
         </Alert>
       )}
 
-      {successMessage && (
-        <Alert
-          severity="success"
-          sx={{ mb: 2 }}
-          onClose={() => setSuccessMessage("")}
-        >
-          {successMessage}
-        </Alert>
-      )}
+      {/* 上傳區塊 */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <VocabularyUpload
+            onUploadSuccess={() => {
+              fetchMyVocabularies();
+            }}
+          />
+        </CardContent>
+      </Card>
 
+      {/* 我的單字本列表 */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -387,57 +385,69 @@ export default function StudentVocabularyPage() {
               <TableCell>解釋語言</TableCell>
               <TableCell>單字數</TableCell>
               <TableCell>建立時間</TableCell>
-              <TableCell>類型</TableCell>
-              <TableCell align="right">操作</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  <CircularProgress />
-                </TableCell>
-              </TableRow>
-            ) : vocabularies.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  沒有資料
-                </TableCell>
-              </TableRow>
-            ) : (
-              vocabularies.map((vocabulary) => (
-                <TableRow key={vocabulary.vocabularyId}>
-                  <TableCell>{vocabulary.name}</TableCell>
-                  <TableCell>{vocabulary.langUse}</TableCell>
-                  <TableCell>{vocabulary.langExp}</TableCell>
-                  <TableCell>{vocabulary.wordCount}</TableCell>
-                  <TableCell>
-                    {new Date(vocabulary.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    {vocabulary.isOwned ? "我建立的" : "收藏"}
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => handleView(vocabulary)}
-                    >
-                      <VisibilityIcon />
-                    </IconButton>
-                    {vocabulary.isOwned && (
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDeleteVocabulary(vocabulary)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    )}
-                  </TableCell>
+                  <TableCell align="right">操作</TableCell>
                 </TableRow>
-              ))
-            )}
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      <CircularProgress />
+                    </TableCell>
+                  </TableRow>
+                ) : myVocabularies.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      沒有資料
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  myVocabularies.map((vocabulary) => {
+                    const vocabularyIsOwner = isOwner(vocabulary);
+                    return (
+                      <TableRow key={vocabulary.vocabularyId}>
+                        <TableCell>{vocabulary.name}</TableCell>
+                        <TableCell>
+                          {LANGUAGE_OPTIONS.find((opt) => opt.value === vocabulary.langUse)?.label || vocabulary.langUse}
+                        </TableCell>
+                        <TableCell>
+                          {LANGUAGE_OPTIONS.find((opt) => opt.value === vocabulary.langExp)?.label || vocabulary.langExp}
+                        </TableCell>
+                        <TableCell>{vocabulary.wordCount}</TableCell>
+                        <TableCell>
+                          {new Date(vocabulary.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell align="right">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleView(vocabulary)}
+                            color="primary"
+                            title="查看"
+                          >
+                            <VisibilityIcon />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEdit(vocabulary)}
+                            color="primary"
+                            disabled={!vocabularyIsOwner}
+                            title={vocabularyIsOwner ? "編輯" : "無權限編輯"}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteVocabulary(vocabulary)}
+                            color="error"
+                            title={vocabularyIsOwner ? "刪除單字本" : "從列表中移除"}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
           </TableBody>
         </Table>
         <TablePagination
@@ -454,9 +464,14 @@ export default function StudentVocabularyPage() {
         />
       </TableContainer>
 
+      {/* 查看對話框 */}
       <Dialog
         open={openViewDialog}
-        onClose={() => setOpenViewDialog(false)}
+        onClose={() => {
+          setOpenViewDialog(false);
+          setEditingWords([]);
+          setError("");
+        }}
         maxWidth="lg"
         fullWidth
       >
@@ -466,59 +481,36 @@ export default function StudentVocabularyPage() {
         <DialogContent>
           {selectedVocabulary && (
             <Box sx={{ pt: 2 }}>
-              <Typography>
-                <strong>單字本ID:</strong> {selectedVocabulary.vocabularyId}
-              </Typography>
-              <Typography>
-                <strong>名稱:</strong> {selectedVocabulary.name}
-              </Typography>
-              <Typography>
-                <strong>背誦語言:</strong> {selectedVocabulary.langUse}
-              </Typography>
-              <Typography>
-                <strong>解釋語言:</strong> {selectedVocabulary.langExp}
-              </Typography>
-              <Typography>
-                <strong>單字數:</strong> {selectedVocabulary.wordCount}
-              </Typography>
-
-              {selectedVocabulary.isOwned && (
-                <Box sx={{ mt: 2, mb: 2 }}>
-                  <Button
-                    component="label"
-                    startIcon={<UploadFileIcon />}
-                    disabled={csvUploading}
-                  >
-                    {csvUploading ? "匯入中..." : "匯入 CSV"}
-                    <input
-                      type="file"
-                      hidden
-                      accept=".csv"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleCsvUpload(file);
-                          e.target.value = "";
-                        }
-                      }}
-                    />
-                  </Button>
-                  {csvError && (
-                    <Alert
-                      severity="error"
-                      sx={{ mt: 2 }}
-                      onClose={() => setCsvError("")}
-                    >
-                      {csvError}
-                    </Alert>
-                  )}
-                </Box>
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
+                  {error}
+                </Alert>
               )}
-
+              <Typography><strong>單字本ID:</strong> {selectedVocabulary.vocabularyId}</Typography>
+              <Typography><strong>名稱:</strong> {selectedVocabulary.name}</Typography>
+              <Typography><strong>背誦語言:</strong> {LANGUAGE_OPTIONS.find((opt) => opt.value === selectedVocabulary.langUse)?.label || selectedVocabulary.langUse}</Typography>
+              <Typography><strong>解釋語言:</strong> {LANGUAGE_OPTIONS.find((opt) => opt.value === selectedVocabulary.langExp)?.label || selectedVocabulary.langExp}</Typography>
+              <Typography><strong>版權:</strong> {selectedVocabulary.copyrights || "-"}</Typography>
+              <Typography><strong>建立者:</strong> {selectedVocabulary.establisher}</Typography>
+              <Typography><strong>單字數:</strong> {selectedVocabulary.wordCount}</Typography>
+              
               <Box sx={{ mt: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  單字列表
-                </Typography>
+                {isOwner(selectedVocabulary) && (
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                    <Typography variant="h6">單字列表</Typography>
+                    <Button
+                      variant="contained"
+                      startIcon={<SaveIcon />}
+                      onClick={handleSaveWords}
+                      disabled={savingWords || loadingWords}
+                    >
+                      {savingWords ? "儲存中..." : "儲存修改"}
+                    </Button>
+                  </Box>
+                )}
+                {!isOwner(selectedVocabulary) && (
+                  <Typography variant="h6" gutterBottom>單字列表</Typography>
+                )}
                 {loadingWords ? (
                   <CircularProgress />
                 ) : (
@@ -530,16 +522,77 @@ export default function StudentVocabularyPage() {
                             <TableCell>單字</TableCell>
                             <TableCell>拼音</TableCell>
                             <TableCell>解釋</TableCell>
+                            <TableCell>詞性</TableCell>
                             <TableCell>例句</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {words.map((word) => (
-                            <TableRow key={word.id}>
-                              <TableCell>{word.word}</TableCell>
-                              <TableCell>{word.spelling || "-"}</TableCell>
-                              <TableCell>{word.explanation}</TableCell>
-                              <TableCell>{word.sentence || "-"}</TableCell>
+                          {editingWords.map((word, index) => (
+                            <TableRow key={word.id || index}>
+                              <TableCell>
+                                {isOwner(selectedVocabulary) ? (
+                                  <TextField
+                                    size="small"
+                                    value={word.word || ""}
+                                    onChange={(e) => handleWordChange(index, "word", e.target.value)}
+                                    fullWidth
+                                    required
+                                  />
+                                ) : (
+                                  word.word
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isOwner(selectedVocabulary) ? (
+                                  <TextField
+                                    size="small"
+                                    value={word.spelling || ""}
+                                    onChange={(e) => handleWordChange(index, "spelling", e.target.value)}
+                                    fullWidth
+                                  />
+                                ) : (
+                                  word.spelling || "-"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isOwner(selectedVocabulary) ? (
+                                  <TextField
+                                    size="small"
+                                    value={word.explanation || ""}
+                                    onChange={(e) => handleWordChange(index, "explanation", e.target.value)}
+                                    fullWidth
+                                    required
+                                  />
+                                ) : (
+                                  word.explanation
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isOwner(selectedVocabulary) ? (
+                                  <TextField
+                                    size="small"
+                                    value={word.partOfSpeech || ""}
+                                    onChange={(e) => handleWordChange(index, "partOfSpeech", e.target.value)}
+                                    fullWidth
+                                  />
+                                ) : (
+                                  word.partOfSpeech || "-"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isOwner(selectedVocabulary) ? (
+                                  <TextField
+                                    size="small"
+                                    value={word.sentence || ""}
+                                    onChange={(e) => handleWordChange(index, "sentence", e.target.value)}
+                                    fullWidth
+                                    multiline
+                                    maxRows={2}
+                                  />
+                                ) : (
+                                  word.sentence || "-"
+                                )}
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -551,15 +604,12 @@ export default function StudentVocabularyPage() {
                       page={wordsPage}
                       onPageChange={async (e, newPage) => {
                         setWordsPage(newPage);
-                        await fetchWords(selectedVocabulary.vocabularyId, newPage);
+                        await fetchWords(selectedVocabulary!.vocabularyId, newPage);
                       }}
                       rowsPerPage={wordsPerPage}
                       onRowsPerPageChange={(e) => {
                         setWordsPerPage(parseInt(e.target.value, 10));
                         setWordsPage(0);
-                        if (selectedVocabulary) {
-                          fetchWords(selectedVocabulary.vocabularyId, 0);
-                        }
                       }}
                       rowsPerPageOptions={[50, 100, 200]}
                     />
@@ -570,91 +620,216 @@ export default function StudentVocabularyPage() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenViewDialog(false)}>關閉</Button>
+          <Button
+            onClick={() => {
+              setOpenViewDialog(false);
+              setEditingWords([]);
+              setError("");
+            }}
+          >
+            關閉
+          </Button>
         </DialogActions>
       </Dialog>
 
+      {/* 編輯對話框 */}
       <Dialog
-        open={openCreateDialog}
-        onClose={() => setOpenCreateDialog(false)}
+        open={openEditDialog}
+        onClose={() => setOpenEditDialog(false)}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>新增單字本</DialogTitle>
+        <DialogTitle>編輯單字本</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
             <TextField
               label="名稱"
-              value={createForm.name}
-              onChange={(e) =>
-                setCreateForm({ ...createForm, name: e.target.value })
-              }
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               fullWidth
               required
             />
-            <TextField
+            <LanguageSelect
+              value={formData.langUse}
+              onChange={(value) => setFormData({ ...formData, langUse: value as string })}
               label="背誦語言"
-              value={createForm.langUse}
-              onChange={(e) =>
-                setCreateForm({ ...createForm, langUse: e.target.value })
-              }
-              fullWidth
               required
             />
-            <TextField
+            <LanguageSelect
+              value={formData.langExp}
+              onChange={(value) => setFormData({ ...formData, langExp: value as string })}
               label="解釋語言"
-              value={createForm.langExp}
-              onChange={(e) =>
-                setCreateForm({ ...createForm, langExp: e.target.value })
-              }
-              fullWidth
               required
             />
             <TextField
-              label="版權/備註"
-              value={createForm.copyrights}
-              onChange={(e) =>
-                setCreateForm({ ...createForm, copyrights: e.target.value })
-              }
+              label="版權"
+              value={formData.copyrights}
+              onChange={(e) => setFormData({ ...formData, copyrights: e.target.value })}
               fullWidth
             />
-            <Button
-              component="label"
-              startIcon={<UploadFileIcon />}
-              variant="outlined"
-            >
-              {createFile ? `已選：${createFile.name}` : "選擇 CSV (選填)"}
-              <input
-                type="file"
-                hidden
-                accept=".csv"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setCreateFile(file);
-                }}
-              />
-            </Button>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              resetCreateForm();
-              setOpenCreateDialog(false);
-            }}
-          >
-            取消
+          <Button onClick={() => setOpenEditDialog(false)}>取消</Button>
+          <Button onClick={handleSaveVocabulary} variant="contained">
+            儲存
           </Button>
-          <Button
-            variant="contained"
-            onClick={handleCreateVocabulary}
-            disabled={creating}
-          >
-            {creating ? "建立中..." : "建立"}
-          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 瀏覽對話框 */}
+      <Dialog
+        open={openBrowseDialog}
+        onClose={() => setOpenBrowseDialog(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>瀏覽單字本</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="名稱"
+                  value={browseFilters.name}
+                  onChange={(e) =>
+                    setBrowseFilters({ ...browseFilters, name: e.target.value })
+                  }
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <LanguageSelect
+                  value={browseFilters.langUse}
+                  onChange={(value) =>
+                    setBrowseFilters({ ...browseFilters, langUse: value as string[] })
+                  }
+                  label="背誦語言"
+                  multiple
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <LanguageSelect
+                  value={browseFilters.langExp}
+                  onChange={(value) =>
+                    setBrowseFilters({ ...browseFilters, langExp: value as string[] })
+                  }
+                  label="解釋語言"
+                  multiple
+                />
+              </Grid>
+            </Grid>
+            <Button
+              variant="contained"
+              startIcon={<SearchIcon />}
+              onClick={handleBrowseSearch}
+              sx={{ mb: 2 }}
+            >
+              搜尋
+            </Button>
+
+            {browseLoading ? (
+              <CircularProgress />
+            ) : (
+              <>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>名稱</TableCell>
+                        <TableCell>背誦語言</TableCell>
+                        <TableCell>解釋語言</TableCell>
+                        <TableCell>單字數</TableCell>
+                        <TableCell>建立者</TableCell>
+                        <TableCell align="right">操作</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {browseVocabularies.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} align="center">
+                            沒有找到符合條件的單字本
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        browseVocabularies.map((vocabulary) => (
+                          <TableRow key={vocabulary.vocabularyId}>
+                            <TableCell>{vocabulary.name}</TableCell>
+                            <TableCell>
+                              {LANGUAGE_OPTIONS.find((opt) => opt.value === vocabulary.langUse)?.label || vocabulary.langUse}
+                            </TableCell>
+                            <TableCell>
+                              {LANGUAGE_OPTIONS.find((opt) => opt.value === vocabulary.langExp)?.label || vocabulary.langExp}
+                            </TableCell>
+                            <TableCell>{vocabulary.wordCount}</TableCell>
+                            <TableCell>{vocabulary.establisher}</TableCell>
+                            <TableCell align="right">
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  setOpenBrowseDialog(false);
+                                  handleView(vocabulary);
+                                }}
+                                color="primary"
+                                title="查看"
+                              >
+                                <VisibilityIcon />
+                              </IconButton>
+                              {isOwner(vocabulary) && (
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    setOpenBrowseDialog(false);
+                                    handleEdit(vocabulary);
+                                  }}
+                                  color="primary"
+                                  title="編輯"
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              )}
+                              {vocabulary.isInMyList ? (
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleRemoveVocabulary(vocabulary)}
+                                  color="error"
+                                  title="從列表中移除"
+                                >
+                                  <RemoveIcon />
+                                </IconButton>
+                              ) : (
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleAddVocabulary(vocabulary)}
+                                  color="success"
+                                  title="加入單字本"
+                                >
+                                  <AddIcon />
+                                </IconButton>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <TablePagination
+                  component="div"
+                  count={browseTotal}
+                  page={browsePage}
+                  onPageChange={(e, newPage) => fetchBrowseVocabularies(newPage)}
+                  rowsPerPage={10}
+                  rowsPerPageOptions={[10]}
+                />
+              </>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenBrowseDialog(false)}>關閉</Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
 }
-

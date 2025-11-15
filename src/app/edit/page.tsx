@@ -15,49 +15,35 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
-  TextField,
 } from "@mui/material";
 import SchoolIcon from "@mui/icons-material/School";
 import StoreIcon from "@mui/icons-material/Store";
 import HomeIcon from "@mui/icons-material/Home";
 
-interface UserProfile {
-  userId: string;
-  dataType: string | null;
-  isUserIdConfirmed?: boolean;
-}
-
 function EditContent() {
-  const { data: session, status, update } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [userIdInput, setUserIdInput] = useState("");
-  const [userIdSaving, setUserIdSaving] = useState(false);
-  const [userIdMessage, setUserIdMessage] = useState("");
-  const [userIdError, setUserIdError] = useState("");
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
-
-    if (status === "unauthenticated") {
+    // 如果未登入，重定向到登入頁
+    if (mounted && status === "unauthenticated") {
       router.push("/login");
-      return;
     }
-
-    if (status === "authenticated" && session?.userId) {
-      fetchUserProfile();
+    // 如果已登入但已有身分，重定向到首頁
+    if (mounted && status === "authenticated" && session?.userId) {
+      checkUserType();
+      // 顯示歡迎訊息（新用戶）
       if (typeof window !== "undefined") {
-        const fromLogin =
-          (document.referrer && document.referrer.includes("/login")) ||
+        const fromLogin = 
+          (document.referrer && document.referrer.includes("/login")) || 
           window.location.search.includes("callbackUrl") ||
           window.location.search.includes("code=");
         if (fromLogin) {
@@ -67,48 +53,32 @@ function EditContent() {
     }
   }, [mounted, status, session, router]);
 
-  const fetchUserProfile = async () => {
+  const checkUserType = async () => {
     try {
-      setProfileLoading(true);
       const response = await fetch("/api/user");
       if (response.ok) {
-        const data = await response.json();
-        setProfile({
-          userId: data.userId,
-          dataType: data.dataType,
-          isUserIdConfirmed: data.isUserIdConfirmed ?? true,
-        });
-        setUserIdInput(data.userId || "");
-
-        if (data.dataType === "Student") {
-          router.push("/student");
-          return;
+        const userData = await response.json();
+        if (userData.dataType) {
+          // 已有身分，重定向到對應頁面
+          if (userData.dataType === "Student") {
+            router.push("/student");
+          } else if (userData.dataType === "Supplier") {
+            router.push("/supplier");
+          } else if (userData.dataType === "Admin") {
+            router.push("/admin");
+          } else {
+            router.push("/");
+          }
         }
-        if (data.dataType === "Supplier") {
-          router.push("/supplier");
-          return;
-        }
-        if (data.dataType === "Admin") {
-          router.push("/admin");
-          return;
-        }
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        const data = await response.json().catch(() => ({}));
-        setError(data.error || "無法取得使用者資料");
       }
-    } catch (err) {
-      console.error("Error loading profile:", err);
-      setError("載入資料失敗，請稍後再試");
-    } finally {
-      setProfileLoading(false);
+    } catch (error) {
+      console.error("Error checking user type:", error);
     }
   };
 
   const handleSelectRole = async (role: "Student" | "Supplier") => {
-    if (!session?.userId || !profile?.isUserIdConfirmed) {
-      setError("請先設定 User ID");
+    if (!session?.userId) {
+      setError("請先登入");
       return;
     }
 
@@ -125,6 +95,7 @@ function EditContent() {
       });
 
       if (response.ok) {
+        // 成功選擇身分，重定向到對應頁面
         if (role === "Student") {
           router.push("/student");
         } else {
@@ -142,53 +113,12 @@ function EditContent() {
     }
   };
 
-  const handleSaveUserId = async () => {
-    if (!session?.userId) {
-      setUserIdError("請先登入");
-      return;
-    }
-
-    setUserIdSaving(true);
-    setUserIdError("");
-    setUserIdMessage("");
-
-    try {
-      const response = await fetch("/api/user/set-id", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: userIdInput }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setProfile((prev) =>
-          prev
-            ? {
-                ...prev,
-                userId: data.userId,
-                isUserIdConfirmed: true,
-              }
-            : prev
-        );
-        setUserIdMessage("User ID 設定成功！");
-        await update({ userId: data.userId });
-      } else {
-        const data = await response.json();
-        setUserIdError(data.error || "設定 User ID 失敗");
-      }
-    } catch (err) {
-      console.error("Error setting userId:", err);
-      setUserIdError("設定 User ID 失敗");
-    } finally {
-      setUserIdSaving(false);
-    }
-  };
-
   const handleCancel = () => {
+    // 取消選擇，登出並清除資料
     router.push("/login");
   };
 
-  if (!mounted || status === "loading" || profileLoading) {
+  if (!mounted || status === "loading") {
     return (
       <Container>
         <Box
@@ -209,8 +139,6 @@ function EditContent() {
     return null;
   }
 
-  const canSelectRole = profile?.isUserIdConfirmed;
-
   return (
     <Container maxWidth="md">
       <Box
@@ -226,7 +154,7 @@ function EditContent() {
         <Paper elevation={3} sx={{ p: 4, width: "100%", maxWidth: 600 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
             <Typography variant="h4" component="h1">
-              完成帳號設定
+              選擇您的身分
             </Typography>
             <Button
               startIcon={<HomeIcon />}
@@ -238,74 +166,30 @@ function EditContent() {
             </Button>
           </Box>
 
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+            請選擇您的身分以繼續使用服務。如果現在不選擇，您可以稍後再登入選擇。
+          </Typography>
+
           {error && (
             <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError("")}>
               {error}
             </Alert>
           )}
 
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              步驟一：設定您的 User ID
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              User ID 將作為您在平台上的唯一識別，至少 5 個字元，可使用英文、數字、底線或連字號。
-            </Typography>
-            <TextField
-              label="User ID"
-              fullWidth
-              value={userIdInput}
-              onChange={(e) => {
-                setUserIdInput(e.target.value);
-                setUserIdError("");
-                setUserIdMessage("");
-              }}
-              error={Boolean(userIdError)}
-              helperText={userIdError || " "}
-              disabled={userIdSaving}
-            />
-            <Button
-              variant="contained"
-              onClick={handleSaveUserId}
-              disabled={userIdSaving}
-              sx={{ mt: 1 }}
-            >
-              {userIdSaving ? "儲存中..." : "確認 User ID"}
-            </Button>
-            {userIdMessage && (
-              <Alert severity="success" sx={{ mt: 2 }} onClose={() => setUserIdMessage("")}>
-                {userIdMessage}
-              </Alert>
-            )}
-            {!canSelectRole && (
-              <Alert severity="warning" sx={{ mt: 2 }}>
-                請先完成 User ID 設定才能選擇身分。
-              </Alert>
-            )}
-          </Box>
-
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            步驟二：選擇您的身分
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            設定完成後即可開始使用系統功能。
-          </Typography>
-
           <Box sx={{ display: "flex", gap: 3, flexDirection: { xs: "column", sm: "row" } }}>
             <Card
               sx={{
                 flex: 1,
-                cursor: loading || !canSelectRole ? "not-allowed" : "pointer",
+                cursor: loading ? "default" : "pointer",
                 transition: "transform 0.2s, box-shadow 0.2s",
-                opacity: canSelectRole ? 1 : 0.6,
-                "&:hover": loading || !canSelectRole
+                "&:hover": loading
                   ? {}
                   : {
                       transform: "translateY(-4px)",
                       boxShadow: 6,
                     },
               }}
-              onClick={() => !loading && canSelectRole && handleSelectRole("Student")}
+              onClick={() => !loading && handleSelectRole("Student")}
             >
               <CardContent sx={{ textAlign: "center", py: 4 }}>
                 <SchoolIcon sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
@@ -321,7 +205,7 @@ function EditContent() {
                   variant="contained"
                   fullWidth
                   onClick={() => handleSelectRole("Student")}
-                  disabled={loading || !canSelectRole}
+                  disabled={loading}
                   startIcon={loading ? <CircularProgress size={20} /> : <SchoolIcon />}
                 >
                   選擇學生
@@ -332,17 +216,16 @@ function EditContent() {
             <Card
               sx={{
                 flex: 1,
-                cursor: loading || !canSelectRole ? "not-allowed" : "pointer",
+                cursor: loading ? "default" : "pointer",
                 transition: "transform 0.2s, box-shadow 0.2s",
-                opacity: canSelectRole ? 1 : 0.6,
-                "&:hover": loading || !canSelectRole
+                "&:hover": loading
                   ? {}
                   : {
                       transform: "translateY(-4px)",
                       boxShadow: 6,
                     },
               }}
-              onClick={() => !loading && canSelectRole && handleSelectRole("Supplier")}
+              onClick={() => !loading && handleSelectRole("Supplier")}
             >
               <CardContent sx={{ textAlign: "center", py: 4 }}>
                 <StoreIcon sx={{ fontSize: 60, color: "secondary.main", mb: 2 }} />
@@ -359,7 +242,7 @@ function EditContent() {
                   color="secondary"
                   fullWidth
                   onClick={() => handleSelectRole("Supplier")}
-                  disabled={loading || !canSelectRole}
+                  disabled={loading}
                   startIcon={loading ? <CircularProgress size={20} /> : <StoreIcon />}
                 >
                   選擇廠商
@@ -369,7 +252,7 @@ function EditContent() {
           </Box>
         </Paper>
       </Box>
-
+      
       <Snackbar
         open={showWelcome}
         autoHideDuration={3000}

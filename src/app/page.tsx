@@ -30,7 +30,6 @@ interface UserInfo {
   email: string | null;
   image: string | null;
   dataType: string | null;
-  isUserIdConfirmed?: boolean;
 }
 
 function HomeContent() {
@@ -55,12 +54,6 @@ function HomeContent() {
             const data = await response.json();
             setUserInfo(data);
             
-            // 如果尚未設定 User ID，引導至 /edit 完成設定
-            if (data.isUserIdConfirmed === false) {
-              router.push("/edit");
-              return;
-            }
-
             // 檢查是否為管理員，如果是則重定向到 /admin
             if (data.dataType === "Admin") {
               console.log("[Home] Admin user detected, redirecting to /admin");
