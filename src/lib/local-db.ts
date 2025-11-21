@@ -7,7 +7,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const DB_DIR = path.join(process.cwd(), ".local-db");
-const DB_FILES = {
+export const DB_FILES = {
   users: path.join(DB_DIR, "users.json"),
   students: path.join(DB_DIR, "students.json"),
   suppliers: path.join(DB_DIR, "suppliers.json"),
@@ -17,6 +17,7 @@ const DB_FILES = {
   words: path.join(DB_DIR, "words.json"),
   stores: path.join(DB_DIR, "stores.json"),
   comments: path.join(DB_DIR, "comments.json"),
+  feedback_forms: path.join(DB_DIR, "feedback_forms.json"),
 };
 
 // 確保資料庫目錄存在
@@ -40,7 +41,7 @@ export function initLocalDb() {
 }
 
 // 讀取資料並修復舊的嵌套結構
-function readData<T>(filePath: string): T[] {
+export function readData<T>(filePath: string): T[] {
   try {
     if (!fs.existsSync(filePath)) {
       return [];
@@ -774,6 +775,56 @@ export const localCouponDb = {
     const filtered = coupons.filter((c) => c.couponId !== where.couponId);
     writeData(DB_FILES.coupons, filtered);
     return { couponId: where.couponId };
+  },
+};
+
+// FeedbackForm 操作
+export const localFeedbackFormDb = {
+  findFirst: async (options?: { orderBy?: any }) => {
+    const forms = readData<any>(DB_FILES.feedback_forms);
+    if (forms.length === 0) return null;
+    
+    if (options?.orderBy) {
+      const [key, order] = Object.entries(options.orderBy)[0];
+      forms.sort((a: any, b: any) => {
+        const aVal = a[key];
+        const bVal = b[key];
+        if (order === "desc") {
+          return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+        }
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      });
+    }
+    
+    return forms[0] || null;
+  },
+
+  create: async (data: any) => {
+    const forms = readData<any>(DB_FILES.feedback_forms);
+    const newForm = {
+      id: generateObjectId(),
+      ...data,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    forms.push(newForm);
+    writeData(DB_FILES.feedback_forms, forms);
+    return newForm;
+  },
+
+  update: async (where: { id: string }, data: any) => {
+    const forms = readData<any>(DB_FILES.feedback_forms);
+    const index = forms.findIndex((f) => f.id === where.id);
+    if (index === -1) {
+      throw new Error("FeedbackForm not found");
+    }
+    forms[index] = {
+      ...forms[index],
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    writeData(DB_FILES.feedback_forms, forms);
+    return forms[index];
   },
 };
 

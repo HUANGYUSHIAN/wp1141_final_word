@@ -136,8 +136,8 @@ export async function DELETE(
     });
 
     // 從所有相關 student 的 lvocabuIDs 中移除該 vocabularyId
-    const updatePromises = students.map((student) => {
-      const updatedLvocabuIDs = student.lvocabuIDs.filter(
+    const updatePromises = students.map((student: any) => {
+      const updatedLvocabuIDs = (student.lvocabuIDs || []).filter(
         (id: string) => id !== vocabularyId
       );
       return prisma.student.update({

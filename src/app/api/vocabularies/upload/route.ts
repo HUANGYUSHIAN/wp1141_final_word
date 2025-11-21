@@ -20,6 +20,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "無效的單字資料" }, { status: 400 });
     }
 
+    // 檢查單字數量（必須超過20個）
+    if (words.length < 20) {
+      return NextResponse.json(
+        { error: "單字本必須包含至少20個單字" },
+        { status: 400 }
+      );
+    }
+
     // 檢查是否有基本欄位
     const hasBasic = words.every((w: any) => w.word && w.explanation);
     if (!hasBasic) {
