@@ -38,7 +38,9 @@
     "next-auth": "^4.24.10",
     "papaparse": "^5.5.3",
     "react": "19.2.0",
+    "react-confetti": "^6.4.0",
     "react-dom": "19.2.0",
+    "react-use": "^17.6.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

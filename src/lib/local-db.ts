@@ -369,6 +369,29 @@ export const localSupplierDb = {
     return newSupplier;
   },
 
+  update: async (where: { id: string } | { userId: string }, data: any) => {
+    const suppliers = readData<any>(DB_FILES.suppliers);
+    let index = -1;
+    
+    if ('id' in where) {
+      index = suppliers.findIndex((s) => s.id === where.id);
+    } else if ('userId' in where) {
+      index = suppliers.findIndex((s) => s.userId === where.userId);
+    }
+    
+    if (index === -1) {
+      throw new Error("Supplier not found");
+    }
+    
+    suppliers[index] = {
+      ...suppliers[index],
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    writeData(DB_FILES.suppliers, suppliers);
+    return suppliers[index];
+  },
+
   delete: async (where: { userId: string }) => {
     const suppliers = readData<any>(DB_FILES.suppliers);
     const filtered = suppliers.filter((s) => s.userId !== where.userId);

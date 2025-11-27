@@ -50,29 +50,34 @@ model Student {
 }
 
 model Supplier {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  lsuppcoIDs  String[] @default([]) // supply coupon ID list
-  payments    String?  // 付款資料 (JSON string)
-  stores      Store[]  // 存放店家店鋪資訊的list
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  lsuppcoIDs    String[] @default([]) // supply coupon ID list
+  payments      String?  // 付款資料 (JSON string)
+  storeName     String?  // 店鋪名稱
+  storeLocation String?  // 店鋪地址
+  storeHours    String?  // 營業時間
+  storeWebsite  String?  // 店鋪網站
+  stores        Store[]  // 存放店家店鋪資訊的list（保留用於評論功能）
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@map("suppliers")
 }
 
 model Store {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  supplierId String
-  supplier  Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  name      String   // 分店名稱
-  location  String?  // 分店位置
-  website   String?  // 分店網站
-  lscores   Int[]    @default([0, 0, 0, 0, 0]) // score list [1分人數, 2分人數, 3分人數, 4分人數, 5分人數]
-  lcomments Comment[] // 存放使用者對於該分店的評論
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  supplierId    String
+  supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  name          String   // 分店名稱
+  location      String?  // 分店位置
+  website       String?  // 分店網站
+  businessHours String?  // 營業時間
+  lscores       Int[]    @default([0, 0, 0, 0, 0]) // score list [1分人數, 2分人數, 3分人數, 4分人數, 5分人數]
+  lcomments     Comment[] // 存放使用者對於該分店的評論
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@map("stores")
 }
@@ -102,15 +107,19 @@ model Admin {
 }
 
 model Coupon {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  couponId  String   @unique // 優惠券ID
-  name      String   // 優惠券名稱
-  period    DateTime // 使用期限(截止日期)
-  link      String?  // coupon QRcode or URL
-  text      String?  // 折價券內容
-  picture   String?  // 折價券圖片設計 (URL)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  couponId      String   @unique // 優惠券ID
+  name          String   // 優惠券名稱
+  period        DateTime // 使用期限(截止日期)
+  link          String?  // coupon QRcode or URL
+  text          String?  // 折價券內容
+  picture       String?  // 折價券圖片設計 (URL)
+  storeName     String?  // 店鋪名稱
+  storeLocation String?  // 店鋪地址
+  storeHours    String?  // 營業時間
+  storeWebsite  String?  // 店鋪網站
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@map("coupons")
 }

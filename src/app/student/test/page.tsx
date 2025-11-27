@@ -89,6 +89,8 @@ export default function TestPage() {
   
   const [wrongAnswers, setWrongAnswers] = useState<WrongAnswer[]>([])
   const [currentWrongIndex, setCurrentWrongIndex] = useState(0)
+  const [earnedPoints, setEarnedPoints] = useState<number | null>(null)
+  const [totalPoints, setTotalPoints] = useState<number | null>(null)
 
   useEffect(() => {
     if (!session) {
@@ -311,7 +313,7 @@ export default function TestPage() {
     }
   }
 
-  const finishTest = () => {
+  const finishTest = async () => {
     const wrongAnswersList: WrongAnswer[] = answers
       .filter(a => !a.isCorrect)
       .map(a => ({
@@ -324,6 +326,32 @@ export default function TestPage() {
     setWrongAnswers(wrongAnswersList)
     setCurrentWrongIndex(0)
     setStage('result')
+
+    // 保存遊戲結果和點數
+    const totalTime = Date.now() - testStartTime
+    const correctCount = answers.filter(a => a.isCorrect).length
+    const accuracy = questions.length > 0 ? (correctCount / questions.length) * 100 : 0
+
+    try {
+      const response = await fetch('/api/student/game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accuracy,
+          totalTime,
+          questionCount: questions.length,
+          correctCount,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setEarnedPoints(data.earnedPoints)
+        setTotalPoints(data.totalPoints)
+      }
+    } catch (error) {
+      console.error('保存點數失敗:', error)
+    }
   }
 
   const handleReset = () => {
@@ -339,6 +367,8 @@ export default function TestPage() {
     setCurrentAnswer(null)
     setWrongAnswers([])
     setCurrentWrongIndex(0)
+    setEarnedPoints(null)
+    setTotalPoints(null)
   }
 
   if (loading) {
@@ -561,6 +591,24 @@ export default function TestPage() {
   const correctCount = answers.filter(a => a.isCorrect).length
   const accuracy = questions.length > 0 ? (correctCount / questions.length) * 100 : 0
 
+  // 載入點數資訊
+  useEffect(() => {
+    if (stage === 'result') {
+      const loadPoints = async () => {
+        try {
+          const response = await fetch('/api/student/game')
+          if (response.ok) {
+            const data = await response.json()
+            setTotalPoints(data.points || 0)
+          }
+        } catch (error) {
+          console.error('載入點數失敗:', error)
+        }
+      }
+      loadPoints()
+    }
+  }, [stage])
+
   return (
     <Box>
         <Box sx={{ mt: 4 }}>
@@ -575,6 +623,16 @@ export default function TestPage() {
               <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
                 答題時間: {minutes} 分 {seconds} 秒
               </Typography>
+              {earnedPoints !== null && (
+                <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
+                  獲得點數: +{earnedPoints} 點
+                </Typography>
+              )}
+              {totalPoints !== null && (
+                <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+                  總點數: {totalPoints} 點
+                </Typography>
+              )}
             </Box>
             <Box sx={{ mt: 2 }}>
               <Button variant="outlined" onClick={handleReset} sx={{ mr: 2 }}>

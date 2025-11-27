@@ -56,7 +56,7 @@ function createLocalPrisma() {
     },
     student: {
       ...localStudentDb,
-      findMany: async (options?: { where?: any }) => {
+      findMany: async (options?: { where?: any; include?: any }) => {
         const students = readData<any>(DB_FILES.students);
         let filtered = students;
         
@@ -69,6 +69,39 @@ function createLocalPrisma() {
               return lvocabuIDs.includes(vocabularyId);
             });
           }
+          // 處理 lcouponIDs.has 過濾（查找包含特定 couponId 的 students）
+          if (options.where.lcouponIDs?.has) {
+            const couponId = options.where.lcouponIDs.has;
+            filtered = filtered.filter((s: any) => {
+              const lcouponIDs = s.lcouponIDs || [];
+              return lcouponIDs.includes(couponId);
+            });
+          }
+        }
+        
+        // 處理 include
+        if (options?.include) {
+          const users = readData<any>(DB_FILES.users);
+          filtered = filtered.map((student: any) => {
+            const studentWithInclude = { ...student };
+            if (options.include.user) {
+              const user = users.find((u: any) => u.userId === student.userId);
+              if (user) {
+                if (options.include.user.select) {
+                  const selected: any = {};
+                  Object.keys(options.include.user.select).forEach((key) => {
+                    if (options.include.user.select[key] === true && user[key] !== undefined) {
+                      selected[key] = user[key];
+                    }
+                  });
+                  studentWithInclude.user = selected;
+                } else {
+                  studentWithInclude.user = user;
+                }
+              }
+            }
+            return studentWithInclude;
+          });
         }
         
         return filtered;
@@ -77,7 +110,25 @@ function createLocalPrisma() {
         return localStudentDb.update(options.where, options.data);
       },
     },
-    supplier: localSupplierDb,
+    supplier: {
+      findUnique: async (options: { where: { userId: string } | { id: string }; include?: any }) => {
+        if ('userId' in options.where) {
+          return localSupplierDb.findUnique({ userId: options.where.userId });
+        }
+        // 如果使用 id，需要從所有 suppliers 中查找
+        const suppliers = readData<any>(DB_FILES.suppliers);
+        return suppliers.find((s: any) => s.id === options.where.id) || null;
+      },
+      update: async (options: { where: { id: string } | { userId: string }; data: any }) => {
+        return localSupplierDb.update(options.where, options.data);
+      },
+      create: async (options: { data: any }) => {
+        return localSupplierDb.create(options.data);
+      },
+      findMany: async (options?: any) => {
+        return readData<any>(DB_FILES.suppliers);
+      },
+    },
     admin: localAdminDb,
     vocabulary: {
       findUnique: async (options: { where: { vocabularyId: string }; include?: any }) => {
