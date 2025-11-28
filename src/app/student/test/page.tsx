@@ -121,6 +121,24 @@ export default function TestPage() {
     }
   }, [selectedLangUse, selectedLangExp, vocabularies, selectedVocabId])
 
+  // 載入點數資訊
+  useEffect(() => {
+    if (stage === 'result') {
+      const loadPoints = async () => {
+        try {
+          const response = await fetch('/api/student/game')
+          if (response.ok) {
+            const data = await response.json()
+            setTotalPoints(data.points || 0)
+          }
+        } catch (error) {
+          console.error('載入點數失敗:', error)
+        }
+      }
+      loadPoints()
+    }
+  }, [stage])
+
   const loadVocabularies = async () => {
     try {
       const response = await fetch('/api/student/vocabularies')
@@ -591,24 +609,6 @@ export default function TestPage() {
   const correctCount = answers.filter(a => a.isCorrect).length
   const accuracy = questions.length > 0 ? (correctCount / questions.length) * 100 : 0
 
-  // 載入點數資訊
-  useEffect(() => {
-    if (stage === 'result') {
-      const loadPoints = async () => {
-        try {
-          const response = await fetch('/api/student/game')
-          if (response.ok) {
-            const data = await response.json()
-            setTotalPoints(data.points || 0)
-          }
-        } catch (error) {
-          console.error('載入點數失敗:', error)
-        }
-      }
-      loadPoints()
-    }
-  }, [stage])
-
   return (
     <Box>
         <Box sx={{ mt: 4 }}>
@@ -707,7 +707,8 @@ export default function TestPage() {
                               color: isWrongAnswer ? 'error.dark' : isCorrectAnswer ? 'success.dark' : 'text.primary',
                             }}
                           >
-                            <Typography variant="body1">
+                          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                            <Typography variant="body1" component="span">
                               {highlights.length > 0 ? (
                                 <>
                                   {highlights.map((highlight, hi) => {
@@ -726,9 +727,10 @@ export default function TestPage() {
                               ) : (
                                 option
                               )}
-                              {isWrongAnswer && <Chip label="您的答案" color="error" size="small" sx={{ ml: 1 }} />}
-                              {isCorrectAnswer && <Chip label="正確答案" color="success" size="small" sx={{ ml: 1 }} />}
                             </Typography>
+                            {isWrongAnswer && <Chip label="您的答案" color="error" size="small" />}
+                            {isCorrectAnswer && <Chip label="正確答案" color="success" size="small" />}
+                          </Box>
                           </Box>
                         )
                       })}

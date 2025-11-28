@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Drawer,
@@ -42,21 +42,18 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
   const [isStudent, setIsStudent] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (mounted && status === "authenticated" && session?.userId) {
+    if (status === "authenticated" && session?.userId) {
       checkStudentStatus();
-    } else if (mounted && status === "unauthenticated") {
+    } else if (status === "unauthenticated") {
       router.push("/login");
+    } else if (status === "loading") {
+      setLoading(true);
     }
-  }, [mounted, status, session, router]);
+  }, [status, session, router]);
 
   const checkStudentStatus = async () => {
     try {
@@ -103,7 +100,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
     await signOut({ callbackUrl: "/login" });
   };
 
-  if (!mounted || loading || status === "loading") {
+  if (loading || status === "loading") {
     return (
       <Box
         sx={{
@@ -197,23 +194,6 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <Suspense
-      fallback={
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "100vh",
-          }}
-        >
-          <CircularProgress />
-        </Box>
-      }
-    >
-      <StudentLayoutContent>{children}</StudentLayoutContent>
-    </Suspense>
-  );
+  return <StudentLayoutContent>{children}</StudentLayoutContent>;
 }
 
