@@ -95,7 +95,7 @@ export async function DELETE(
 
     // 從供應商的 lsuppcoIDs 中移除
     const updatedCouponIds = (supplier.lsuppcoIDs || []).filter(
-      (id) => id !== couponId
+      (id: string) => id !== couponId
     );
 
     await prisma.supplier.update({

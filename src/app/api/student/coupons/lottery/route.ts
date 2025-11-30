@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     // 過濾掉學生已經擁有的優惠券
     const ownedCouponIds = student.lcouponIDs || [];
     const availableCoupons = allCoupons.filter(
-      (c) => !ownedCouponIds.includes(c.couponId)
+      (c: { couponId: string }) => !ownedCouponIds.includes(c.couponId)
     );
 
     if (availableCoupons.length === 0) {

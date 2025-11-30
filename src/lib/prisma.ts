@@ -117,7 +117,8 @@ function createLocalPrisma() {
         }
         // 如果使用 id，需要從所有 suppliers 中查找
         const suppliers = readData<any>(DB_FILES.suppliers);
-        return suppliers.find((s: any) => s.id === options.where.id) || null;
+        const whereId = 'id' in options.where ? options.where.id : null;
+        return whereId ? suppliers.find((s: any) => s.id === whereId) || null : null;
       },
       update: async (options: { where: { id: string } | { userId: string }; data: any }) => {
         return localSupplierDb.update(options.where, options.data);

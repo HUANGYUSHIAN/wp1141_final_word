@@ -51,7 +51,7 @@ export async function GET(
       },
     });
 
-    const owners = students.map((student) => ({
+    const owners = students.map((student: { user: { userId: string; name: string | null; email: string | null } }) => ({
       userId: student.user.userId,
       name: student.user.name || "未命名",
       email: student.user.email || "",
