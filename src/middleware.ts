@@ -21,13 +21,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 检查所有可能的 cookie 名称
-  const cookieNames = [
-    "__Secure-next-auth.session-token",
-    "next-auth.session-token",
-    "__Host-next-auth.session-token",
-  ];
-
   // 使用 NextAuth 的 getToken 获取 token
   // 明确指定 cookie 名称（生产环境使用 __Secure-*）
   const cookieName = process.env.NODE_ENV === "production"
@@ -46,6 +39,14 @@ export async function middleware(request: NextRequest) {
   // 检查 token 是否存在且有 userId
   if (token && token.userId) {
     console.log("[Middleware] User authenticated, allowing access");
+    return NextResponse.next();
+  }
+
+  // 特殊处理：如果是从 OAuth callback 重定向来的请求，允许通过
+  // 检查 referer 是否包含 callback（OAuth 回调后，cookie 可能还没完全设置好）
+  const referer = request.headers.get("referer");
+  if (referer && referer.includes("/api/auth/callback/")) {
+    console.log("[Middleware] Request from OAuth callback, allowing access (cookie may not be set yet)");
     return NextResponse.next();
   }
 

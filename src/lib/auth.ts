@@ -298,6 +298,8 @@ export const authOptions: NextAuthOptions = {
         sameSite: "lax",
         path: "/",
         secure: process.env.NODE_ENV === "production",
+        // 不设置 domain，让浏览器自动处理（Vercel 需要）
+        // 确保 cookie 在重定向时能正确发送
       },
     },
   },
