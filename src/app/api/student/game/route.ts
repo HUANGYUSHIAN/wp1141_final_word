@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { accuracy, totalTime, questionCount, correctCount } = body;
+    const { accuracy, totalTime, questionCount, correctCount, earnedPoints: providedEarnedPoints } = body;
 
     if (accuracy === undefined || totalTime === undefined || questionCount === undefined) {
       return NextResponse.json({ error: "缺少必要參數" }, { status: 400 });
@@ -83,12 +83,19 @@ export async function POST(request: Request) {
     }
 
     // 計算點數
-    // 基礎點數：答對率 * 10
-    // 時間獎勵：如果平均答題時間 < 10秒，額外加分
-    const basePoints = Math.round(accuracy * 10);
-    const averageTime = questionCount > 0 ? totalTime / questionCount / 1000 : 0; // 轉換為秒
-    const timeBonus = averageTime < 10 ? Math.round((10 - averageTime) * 2) : 0;
-    const earnedPoints = basePoints + timeBonus;
+    // 如果提供了 earnedPoints，直接使用（例如 Wordle 遊戲固定 100 點）
+    // 否則根據 accuracy 和時間計算
+    let earnedPoints: number;
+    if (providedEarnedPoints !== undefined) {
+      earnedPoints = providedEarnedPoints;
+    } else {
+      // 基礎點數：答對率 * 10
+      // 時間獎勵：如果平均答題時間 < 10秒，額外加分
+      const basePoints = Math.round(accuracy * 10);
+      const averageTime = questionCount > 0 ? totalTime / questionCount / 1000 : 0; // 轉換為秒
+      const timeBonus = averageTime < 10 ? Math.round((10 - averageTime) * 2) : 0;
+      earnedPoints = basePoints + timeBonus;
+    }
 
     // 更新點數
     const currentPoints = gameData.points || 0;

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import {
   Box,
   Typography,
@@ -34,6 +34,7 @@ interface WordleGameProps {
   langExp: string
   onGameEnd: (won: boolean, score: number) => void
   onBack: () => void
+  resetGame?: boolean // 是否重置遊戲（選擇新單字）
 }
 
 // 檢查是否為日文的輔助函數
@@ -41,7 +42,67 @@ const isJapaneseLanguage = (lang: string): boolean => {
   return lang === 'Japanese' || lang === 'ja' || lang === 'jpn'
 }
 
-export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack }: WordleGameProps) {
+// 檢查字符是否為漢字
+const isKanji = (char: string): boolean => {
+  return /[\u4E00-\u9FAF]/.test(char)
+}
+
+// 檢查字符是否為平假名
+const isHiragana = (char: string): boolean => {
+  return /[\u3040-\u309F]/.test(char)
+}
+
+// 檢查字符是否為片假名
+const isKatakana = (char: string): boolean => {
+  return /[\u30A0-\u30FF]/.test(char)
+}
+
+// 將片假名轉換為平假名
+const katakanaToHiragana = (text: string): string => {
+  return text.split('').map(char => {
+    if (isKatakana(char)) {
+      const code = char.charCodeAt(0)
+      return String.fromCharCode(code - 0x60)
+    }
+    return char
+  }).join('')
+}
+
+// 將平假名轉換為片假名
+const hiraganaToKatakana = (text: string): string => {
+  return text.split('').map(char => {
+    if (isHiragana(char)) {
+      const code = char.charCodeAt(0)
+      return String.fromCharCode(code + 0x60)
+    }
+    return char
+  }).join('')
+}
+
+// 檢查日文答案是否匹配（考慮平假名、片假名）
+const isJapaneseAnswerMatch = (guess: string, target: string): boolean => {
+  // 移除空白字符
+  const normalizedGuess = guess.trim().replace(/\s+/g, '')
+  const normalizedTarget = target.trim().replace(/\s+/g, '')
+  
+  // 完全匹配
+  if (normalizedGuess === normalizedTarget) {
+    return true
+  }
+  
+  // 將平假名和片假名統一轉換為平假名進行比較
+  const targetHiragana = isKatakana(normalizedTarget) ? katakanaToHiragana(normalizedTarget) : normalizedTarget
+  const guessHiragana = isKatakana(normalizedGuess) ? katakanaToHiragana(normalizedGuess) : normalizedGuess
+  
+  // 轉換後比較
+  if (targetHiragana === guessHiragana) {
+    return true
+  }
+  
+  return false
+}
+
+export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack, resetGame = false }: WordleGameProps) {
   const [targetWord, setTargetWord] = useState<Word | null>(null)
   const [targetWordText, setTargetWordText] = useState('')
   const [guesses, setGuesses] = useState<Guess[]>([])
@@ -52,8 +113,45 @@ export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack 
   const [letterStates, setLetterStates] = useState<Record<string, LetterState>>({})
   const [score, setScore] = useState(0)
   const [kanaMode, setKanaMode] = useState<'hiragana' | 'katakana'>('hiragana')
+  const resetGameProcessedRef = useRef(false)
+  
+  // 使用 sessionStorage 來保存是否已經初始化，避免離開頁面後回來時重新選擇單字
+  const getStorageKey = () => `wordle-game-${langUse}-${langExp}`
+  const isInitialized = () => {
+    if (typeof window === 'undefined') return false
+    return sessionStorage.getItem(getStorageKey()) === 'initialized'
+  }
+  const setInitialized = () => {
+    if (typeof window === 'undefined') return
+    sessionStorage.setItem(getStorageKey(), 'initialized')
+  }
+  const clearInitialized = () => {
+    if (typeof window === 'undefined') return
+    sessionStorage.removeItem(getStorageKey())
+  }
 
   useEffect(() => {
+    // 如果需要重置遊戲，清除初始化狀態
+    if (resetGame && !resetGameProcessedRef.current) {
+      clearInitialized()
+      setTargetWord(null)
+      setTargetWordText('')
+      setGuesses([])
+      setCurrentGuess('')
+      setGameWon(false)
+      setGameLost(false)
+      setLetterStates({})
+      setScore(0)
+      setKanaMode('hiragana')
+      resetGameProcessedRef.current = true
+      // 清除後繼續執行選擇新單字的邏輯
+    }
+
+    // 如果已經初始化過且不需要重置，不重新選擇（避免離開頁面後回來時重新選擇）
+    if (isInitialized() && !resetGame) {
+      return
+    }
+
     if (words.length === 0) {
       alert('單字本中沒有單字')
       onBack()
@@ -70,7 +168,14 @@ export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack 
 
     const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)]
     const isJapanese = isJapaneseLanguage(langUse)
-    const wordText = isJapanese ? randomWord.word.trim() : randomWord.word.trim().toLowerCase()
+    
+    // 日文的話直接使用 spelling 當作答案
+    let wordText: string
+    if (isJapanese && randomWord.spelling && randomWord.spelling.trim()) {
+      wordText = randomWord.spelling.trim()
+    } else {
+      wordText = isJapanese ? randomWord.word.trim() : randomWord.word.trim().toLowerCase()
+    }
     
     setTargetWord(randomWord)
     setTargetWordText(wordText)
@@ -81,7 +186,12 @@ export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack 
     setLetterStates({})
     setScore(0)
     setKanaMode('hiragana')
-  }, [words, langUse, onBack])
+    
+    // 標記為已初始化
+    setInitialized()
+    resetGameProcessedRef.current = false // 重置標記，以便下次重置時可以再次處理
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [words, langUse, resetGame])
 
   const evaluateGuess = (guess: string, target: string): LetterState[] => {
     const states: LetterState[] = new Array(guess.length).fill('absent')
@@ -146,10 +256,18 @@ export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack 
     })
     setLetterStates(newLetterStates)
 
-    if (guess === targetWordText) {
+    // 檢查是否獲勝（日文需要特殊處理）
+    let isCorrect = false
+    if (isJapanese) {
+      isCorrect = isJapaneseAnswerMatch(guess, targetWordText)
+    } else {
+      isCorrect = guess === targetWordText
+    }
+
+    if (isCorrect) {
       setGameWon(true)
       const attemptsUsed = newGuesses.length
-      const pointsEarned = Math.max(1, (maxAttempts - attemptsUsed + 1) * 100)
+      const pointsEarned = 100 // 獲勝固定 100 分
       setScore(pointsEarned)
       onGameEnd(true, pointsEarned)
     } else if (newGuesses.length >= maxAttempts) {
@@ -511,7 +629,7 @@ export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack 
             <Alert severity="error" sx={{ mb: 2 }}>
               <Typography variant="h6">遊戲結束</Typography>
               <Typography variant="body2">
-                正確答案是: <strong>{targetWordText.toUpperCase()}</strong>
+                正確答案是: <strong>{isJapanese ? targetWordText : targetWordText.toUpperCase()}</strong>
               </Typography>
             </Alert>
           )}

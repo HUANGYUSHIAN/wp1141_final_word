@@ -54,6 +54,7 @@ export default function GamePage() {
   
   const [earnedPoints, setEarnedPoints] = useState<number | null>(null)
   const [totalPoints, setTotalPoints] = useState<number | null>(null)
+  const [resetGame, setResetGame] = useState(false)
 
   useEffect(() => {
     if (!session) {
@@ -144,6 +145,14 @@ export default function GamePage() {
       return
     }
 
+    // 從設定頁面開始新遊戲時，清除之前的遊戲狀態
+    // 使用與 WordleGame 相同的 key 格式
+    if (typeof window !== 'undefined') {
+      const storageKey = `wordle-game-${selectedLangUse}-${selectedLangExp}`
+      sessionStorage.removeItem(storageKey)
+    }
+    
+    setResetGame(true)
     setStage('playing')
   }
 
@@ -164,6 +173,7 @@ export default function GamePage() {
             totalTime,
             questionCount: 1,
             correctCount: 1,
+            earnedPoints: score, // 直接傳入獲得的點數（Wordle 固定 100 點）
           }),
         })
 
@@ -190,6 +200,18 @@ export default function GamePage() {
     setTotalPoints(null)
   }
 
+  const handlePlayAgain = () => {
+    // 清除遊戲狀態，重新開始
+    if (typeof window !== 'undefined') {
+      const storageKey = `wordle-game-${selectedLangUse}-${selectedLangExp}`
+      sessionStorage.removeItem(storageKey)
+    }
+    setResetGame(true)
+    setEarnedPoints(null)
+    setTotalPoints(null)
+    setStage('playing')
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
@@ -199,8 +221,8 @@ export default function GamePage() {
   }
 
   if (stage === 'setup') {
-    return (
-      <Box>
+  return (
+    <Box>
         <Box sx={{ mt: 4 }}>
           <Paper sx={{ p: 4 }}>
             <Typography variant="h5" gutterBottom>
@@ -208,7 +230,7 @@ export default function GamePage() {
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               選擇遊戲類型並開始遊戲
-            </Typography>
+      </Typography>
 
             <FormControl fullWidth sx={{ mt: 2, mb: 2 }}>
               <InputLabel>遊戲類型</InputLabel>
@@ -284,8 +306,8 @@ export default function GamePage() {
             >
               開始遊戲
             </Button>
-          </Paper>
-        </Box>
+      </Paper>
+    </Box>
       </Box>
     )
   }
@@ -314,6 +336,7 @@ export default function GamePage() {
           langExp={selectedLangExp}
           onGameEnd={handleGameEnd}
           onBack={handleBack}
+          resetGame={resetGame}
         />
       )
     } else if (selectedGameType === 'snake') {
@@ -349,10 +372,13 @@ export default function GamePage() {
             )}
           </Box>
           <Box sx={{ mt: 2 }}>
+            <Button variant="contained" onClick={handlePlayAgain} sx={{ mr: 2 }}>
+              再玩一次
+            </Button>
             <Button variant="outlined" onClick={handleReset} sx={{ mr: 2 }}>
               重新開始
             </Button>
-            <Button variant="contained" onClick={() => setStage('setup')}>
+            <Button variant="outlined" onClick={() => setStage('setup')}>
               返回設定
             </Button>
           </Box>

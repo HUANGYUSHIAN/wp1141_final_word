@@ -44,8 +44,16 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isStudent, setIsStudent] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  // 確保只在客戶端執行
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
+    if (!mounted) return;
+    
     if (status === "authenticated" && session?.userId) {
       checkStudentStatus();
     } else if (status === "unauthenticated") {
@@ -53,7 +61,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
     } else if (status === "loading") {
       setLoading(true);
     }
-  }, [status, session, router]);
+  }, [mounted, status, session, router]);
 
   const checkStudentStatus = async () => {
     try {
@@ -99,6 +107,11 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/login" });
   };
+
+  // 在客戶端掛載之前，返回 null 避免 hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   if (loading || status === "loading") {
     return (

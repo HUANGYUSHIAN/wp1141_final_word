@@ -127,13 +127,20 @@ export default function StudentStorePage() {
       if (response.ok) {
         const data = await response.json();
         setPoints(data.remainingPoints);
-        setSelectedCoupon(data.coupon);
-        setOpenDialog(true);
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 5000);
-        setSuccess(`恭喜獲得優惠券：${data.coupon.name}！`);
-        await loadMyCoupons();
-        await loadAvailableCoupons();
+        
+        if (data.won && data.coupon) {
+          // 中獎了
+          setSelectedCoupon(data.coupon);
+          setOpenDialog(true);
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 5000);
+          setSuccess(`恭喜獲得優惠券：${data.coupon.name}！`);
+          await loadMyCoupons();
+          await loadAvailableCoupons();
+        } else {
+          // 未中獎
+          setError(data.message || "很遺憾，這次沒有中獎，請再試試！");
+        }
       } else {
         const data = await response.json();
         setError(data.error || "抽獎失敗");
@@ -229,6 +236,9 @@ export default function StudentStorePage() {
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
           消耗 {lotteryPoints} 點即可參與抽獎，有機會獲得優惠券！
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          中獎率：{lotteryPoints === 50 ? '5%' : lotteryPoints === 100 ? '10%' : lotteryPoints === 200 ? '30%' : '5%'}
         </Typography>
       </Paper>
 
