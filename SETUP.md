@@ -10,6 +10,8 @@
 - [環境變數設定](#環境變數設定)
 - [本地資料庫設置](#本地資料庫設置)
 - [MongoDB 設置](#mongodb-設置)
+- [從 MongoDB 遷移到本地資料庫](#從-mongodb-遷移到本地資料庫)
+- [本地部署（使用本地資料庫）](#本地部署使用本地資料庫)
 - [創建管理員帳號](#創建管理員帳號)
 - [測試登入](#測試登入)
 - [資料庫結構](#資料庫結構)
@@ -28,7 +30,17 @@ npm install
 
 ### 2. 設置環境變數
 
-在專案根目錄創建 `.env` 文件（參考下方 [環境變數設定](#環境變數設定) 章節）
+複製 `.env.example` 文件為 `.env`：
+
+```bash
+# Windows
+copy .env.example .env
+
+# Linux/macOS
+cp .env.example .env
+```
+
+然後根據需要修改 `.env` 文件中的設定（參考下方 [環境變數設定](#環境變數設定) 章節）
 
 ### 3. 選擇資料庫模式
 
@@ -73,7 +85,17 @@ npm run dev
 
 ## 🔧 環境變數設定
 
-在專案根目錄創建 `.env` 文件，並填入以下內容：
+專案根目錄已包含 `.env.example` 文件作為範本。請複製並重新命名為 `.env`，然後根據需要修改：
+
+```bash
+# Windows
+copy .env.example .env
+
+# Linux/macOS
+cp .env.example .env
+```
+
+`.env` 文件應包含以下內容：
 
 ```env
 # 資料庫模式選擇
@@ -92,6 +114,8 @@ GOOGLE_CLIENT_SECRET="your-google-client-secret"
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="your-nextauth-secret-key-here"
 ```
+
+**⚠️ 重要：`.env` 文件包含敏感資訊，絕對不要提交到 Git！**
 
 ### 各變數說明
 
@@ -487,6 +511,9 @@ npm run db:push
 # 遷移本地資料到 MongoDB
 npm run db:migrate-to-mongodb
 
+# 遷移 MongoDB 資料到本地
+npm run db:migrate-to-local
+
 # 創建管理員帳號
 npm run db:create-admin [name] [email]
 
@@ -512,6 +539,146 @@ npm run check:vercel
 # 測試環境變數
 npm run test:env
 ```
+
+---
+
+## 🔄 從 MongoDB 遷移到本地資料庫
+
+如果您想將 MongoDB 的資料遷移到本地資料庫（例如：為了在本地部署或分享資料）：
+
+### 使用自動遷移腳本（推薦）
+
+1. **備份本地資料庫**（如果已有資料）
+   ```bash
+   # 備份 .local-db 目錄
+   cp -r .local-db .local-db.backup
+   ```
+
+2. **更新 `.env` 設定**：
+   ```env
+   DATABASE_local=false
+   DATABASE_URL="mongodb://localhost:27017/oauth"
+   # 或使用 MongoDB Atlas 連接字串
+   ```
+
+3. **執行遷移**：
+   ```bash
+   npm run db:migrate-to-local
+   ```
+
+此腳本會自動遷移以下資料：
+- Users（使用者）
+- Students（學生）
+- Suppliers（廠商）
+- Admins（管理員）
+- Vocabularies（單字本）
+- Words（單字）
+- Coupons（優惠券）
+- Stores（店鋪）
+- Comments（評論）
+
+4. **切換回本地資料庫模式**：
+   ```env
+   DATABASE_local=true
+   ```
+
+5. **重新啟動應用程式**
+
+**注意事項：**
+- ⚠️ 遷移前請確保已備份本地資料庫（會覆蓋現有資料）
+- ⚠️ 遷移過程中需要 MongoDB 連接正常
+- ⚠️ 遷移完成後記得將 `DATABASE_local` 設置為 `true`
+
+---
+
+## 💻 本地部署（使用本地資料庫）
+
+如果您想使用本地資料庫進行部署（例如：分享給其他開發者或快速測試）：
+
+### 步驟 1：從 GitHub 克隆專案
+
+```bash
+git clone <repository-url>
+cd OAuth
+```
+
+### 步驟 2：安裝依賴
+
+```bash
+npm install
+```
+
+### 步驟 3：設置環境變數
+
+```bash
+# Windows
+copy .env.example .env
+
+# Linux/macOS
+cp .env.example .env
+```
+
+編輯 `.env` 文件，確保以下設定：
+```env
+DATABASE_local=true
+```
+
+### 步驟 4：初始化本地資料庫
+
+如果專案已包含 `.local-db/` 目錄（已提交到 Git），可以直接使用：
+
+```bash
+# 如果 .local-db 目錄不存在，初始化
+npm run db:init-local
+```
+
+### 步驟 5：創建管理員帳號（可選）
+
+```bash
+npm run db:create-admin [name] [email]
+```
+
+### 步驟 6：啟動應用程式
+
+```bash
+npm run dev
+```
+
+訪問 http://localhost:3000
+
+### 從 MongoDB 遷移資料到本地（可選）
+
+如果您有 MongoDB 資料庫，想要遷移到本地：
+
+1. **暫時切換到 MongoDB 模式**：
+   ```env
+   DATABASE_local=false
+   DATABASE_URL="mongodb://localhost:27017/oauth"
+   ```
+
+2. **執行遷移**：
+   ```bash
+   npm run db:migrate-to-local
+   ```
+
+3. **切換回本地模式**：
+   ```env
+   DATABASE_local=true
+   ```
+
+### 本地資料庫的優點
+
+- ✅ 無需安裝 MongoDB
+- ✅ 快速設置，適合開發和測試
+- ✅ 資料以 JSON 格式存儲，易於查看和備份
+- ✅ 可以提交到 Git（已更新 .gitignore）
+- ✅ 方便分享給其他開發者
+
+### 本地資料庫的限制
+
+- ⚠️ 不適合生產環境（大量並發）
+- ⚠️ 不支援複雜的查詢和索引
+- ⚠️ 並發寫入可能導致資料不一致
 
 ---
 
@@ -643,7 +810,8 @@ npm install
 2. **生產環境必須使用 MongoDB**：確保資料持久性和效能
 3. **定期備份資料**：本地資料庫可備份 `.local-db/` 目錄
 4. **不要將 `.env` 文件提交到 Git**：已包含在 `.gitignore` 中
-5. **不要將 `.local-db/` 目錄提交到 Git**：已包含在 `.gitignore` 中
+5. **`.local-db/` 目錄可以提交到 Git**：方便分享資料給其他開發者（已更新 `.gitignore`）
+6. **`.env.example` 可以提交到 Git**：作為環境變數範本（已更新 `.gitignore`）
 
 ---
 

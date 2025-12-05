@@ -1,0 +1,31 @@
+[
+  {
+    "id": "6916e86983f8c0c79042b56e",
+    "userId": "wdrlIJqiC4fsK66qBqJgBv84RRj9RX",
+    "lvocabuIDs": [],
+    "lcouponIDs": [],
+    "paraGame": null,
+    "payments": null,
+    "lfriendIDs": [],
+    "createdAt": "2025-11-14T08:29:29.279Z",
+    "updatedAt": "2025-11-14T08:29:29.279Z"
+  },
+  {
+    "id": "691866be288a4416a320fb3b",
+    "userId": "ralNUtxLOjG94jhIGF02zZbZdgdjEF",
+    "lvocabuIDs": [
+      "hrtZUEQQ3B773srGsBN3uGOg2dC8Ji",
+      "c06rYbYCuKFWsnG90BSvn0EiEcVuvT"
+    ],
+    "lcouponIDs": [
+      "tHt5RJyDpBq6R8vOMn0ZygOJq1GXe2",
+      "pw0AVADYYSelqkoRrNr0QOCARL05ci",
+      "J77FUtkvs3LsOk2ddnXzXNNKYfSLcJ"
+    ],
+    "paraGame": "{\"points\":6024,\"gameHistory\":[{\"accuracy\":20,\"totalTime\":10125,\"questionCount\":10,\"correctCount\":2,\"earnedPoints\":218,\"timestamp\":\"2025-11-27T08:45:55.277Z\"},{\"accuracy\":0,\"totalTime\":5079,\"questionCount\":10,\"correctCount\":0,\"earnedPoints\":19,\"timestamp\":\"2025-11-27T08:49:00.300Z\"},{\"accuracy\":20,\"totalTime\":6677,\"questionCount\":10,\"correctCount\":2,\"earnedPoints\":219,\"timestamp\":\"2025-11-27T08:50:20.788Z\"},{\"accuracy\":0,\"totalTime\":8070,\"questionCount\":10,\"correctCount\":0,\"earnedPoints\":18,\"timestamp\":\"2025-11-27T08:52:48.476Z\"},{\"accuracy\":40,\"totalTime\":8344,\"questionCount\":10,\"correctCount\":4,\"earnedPoints\":418,\"timestamp\":\"2025-11-27T08:54:26.169Z\"},{\"accuracy\":10,\"totalTime\":20854,\"questionCount\":10,\"correctCount\":1,\"earnedPoints\":116,\"timestamp\":\"2025-11-27T08:58:19.847Z\"},{\"accuracy\":20,\"totalTime\":6559,\"questionCount\":10,\"correctCount\":2,\"earnedPoints\":219,\"timestamp\":\"2025-11-28T02:32:26.276Z\"},{\"accuracy\":70,\"totalTime\":38348,\"questionCount\":10,\"correctCount\":7,\"earnedPoints\":712,\"timestamp\":\"2025-11-28T02:43:22.318Z\"},{\"accuracy\":90,\"totalTime\":43181,\"questionCount\":10,\"correctCount\":9,\"earnedPoints\":911,\"timestamp\":\"2025-11-28T02:53:27.019Z\"},{\"accuracy\":40,\"totalTime\":10056,\"questionCount\":10,\"correctCount\":4,\"earnedPoints\":418,\"timestamp\":\"2025-11-28T02:53:52.749Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1000,\"timestamp\":\"2025-11-30T15:16:38.235Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1000,\"timestamp\":\"2025-12-04T17:19:20.515Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1000,\"timestamp\":\"2025-12-04T17:23:02.903Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":100,\"timestamp\":\"2025-12-04T17:25:33.876Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":2,\"timestamp\":\"2025-12-05T08:38:53.356Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1,\"timestamp\":\"2025-12-05T08:41:56.928Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":3,\"timestamp\":\"2025-12-05T09:00:37.688Z\"}],\"totalGames\":17,\"totalPoints\":6024}",
+    "payments": null,
+    "lfriendIDs": [],
+    "createdAt": "2025-11-15T11:40:46.167Z",
+    "updatedAt": "2025-12-05T09:00:37.695Z"
+  }
+]
