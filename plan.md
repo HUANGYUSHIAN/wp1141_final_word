@@ -1,3 +1,32 @@
+# Final Project – Midterm Plan
+
+## Deploy Link
+https://word-war-app.vercel.app/
+
+## 1. 本次 Prototype 已完成
+- 認證系統：Google OAuth 登入、角色選擇（Student/Supplier）、Session 管理、Middleware 路由保護
+- 資料庫架構：Prisma Schema 定義、MongoDB 整合、完整的資料模型（User, Student, Supplier, Admin, Vocabulary, Word, Coupon, Store）
+- Admin 功能：用戶管理（查看、編輯、刪除、新增、上鎖、升級權限）、單字本管理（CSV 檔案、Excel 匯入）、優惠券管理（CRUD）、分頁顯示
+- Student 功能：單字本瀏覽與加入、單字本建立與管理、單字管理（CRUD、批量更新）、優惠券瀏覽與抽獎（含中獎率機制）、我的優惠券查看、遊戲功能（Wordle 猜謎遊戲、貪食蛇遊戲）、點數系統（可用來抽取優惠券）、單字複習頁面、使用者反饋頁面
+- Supplier 功能：優惠券管理（建立、編輯、刪除、查看、擁有者列表）、店鋪管理（店名、地址、營業時間、網站）、回饋查看
+- UI/UX 基礎：Material-UI 整合、響應式設計、語言選擇組件、基本錯誤處理
+
+## 2. 最終版本預計完成項目
+- 完整的使用者流程優化
+- 資料驗證與錯誤處理強化
+- 安全性強化（API 請求頻率限制、XSS 防護、權限檢查）
+- Student 功能完善：個人資料編輯、付款資訊管理、複習功能完善、單字本統計分析
+- Supplier 功能完善：優惠券使用統計、店鋪評論管理、店鋪評分統計
+- Admin 功能完善：用戶搜尋與篩選、單字本審核功能、優惠券審核功能、系統設定
+- 三大主要功能：單字學習系統、優惠券抽獎系統、遊戲點數系統
+
+## 3. 預期開發進度
+- Week 1: 完成資料驗證與錯誤處理、安全性強化、Student 個人資料編輯功能
+- Week 2: 完成 Supplier 優惠券統計功能、Admin 搜尋與篩選功能、單字本審核功能
+- Week 3: 介面調整與最終整合、系統測試、部署優化
+
+---
+
 # 全端背單字 & 抽獎券服務 - 開發計劃與進度
 
 ## 📋 專案概述
