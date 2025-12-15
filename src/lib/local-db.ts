@@ -435,15 +435,14 @@ export const localVocabularyDb = {
         const words = readData<any>(DB_FILES.words);
         vocabulary.words = words.filter((w) => w.vocabularyId === vocabulary.id);
       }
-      if (options.include._count) {
-        const words = readData<any>(DB_FILES.words);
-        // 計算單字數：words 的 vocabularyId 應該匹配 vocabulary.id
-        const wordCount = words.filter((w: any) => w.vocabularyId === vocabulary.id).length;
-        vocabulary._count = {
-          words: wordCount,
-        };
-      }
     }
+    
+    // 直接使用 count 方法計算單字數（更高效，直接查詢 DB 長度）
+    // 無論是否有 include._count，都計算 _count 以確保兼容性
+    const wordCount = await localWordDb.count({ vocabularyId: vocabulary.vocabularyId });
+    vocabulary._count = {
+      words: wordCount,
+    };
     
     return vocabulary;
   },
@@ -516,22 +515,26 @@ export const localVocabularyDb = {
     
     // 處理 include
     if (options?.include) {
-      if (options.include._count) {
+      if (options.include.words) {
         const words = readData<any>(DB_FILES.words);
         vocabularies = vocabularies.map((v: any) => {
-          // 計算單字數：words 的 vocabularyId 應該匹配 vocabulary.id
-          // 在本地資料庫中，words.vocabularyId 存儲的是 vocabulary.id（內部 ID）
-          const wordCount = words.filter((w: any) => w.vocabularyId === v.id).length;
-          
-          return {
-            ...v,
-            _count: {
-              words: wordCount,
-            },
-          };
+          v.words = words.filter((w: any) => w.vocabularyId === v.id);
+          return v;
         });
       }
     }
+    
+    // 直接使用 count 方法計算單字數（更高效，直接查詢 DB 長度）
+    // 無論是否有 include._count，都計算 _count 以確保兼容性
+    // 使用 Promise.all 並行計算以提高效率
+    const countPromises = vocabularies.map(async (v: any) => {
+      const wordCount = await localWordDb.count({ vocabularyId: v.vocabularyId });
+      v._count = {
+        words: wordCount,
+      };
+      return v;
+    });
+    vocabularies = await Promise.all(countPromises);
     
     // 分頁
     const skip = options?.skip || 0;

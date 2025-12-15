@@ -12,7 +12,6 @@ import {
 
 export const LANGUAGE_OPTIONS = [
   { value: "Japanese", label: "日文" },
-  { value: "Korean", label: "韓文" },
   { value: "English", label: "英文" },
   { value: "Traditional Chinese", label: "繁體中文" },
 ];
@@ -29,6 +28,7 @@ interface LanguageSelectProps {
   required?: boolean;
   multiple?: boolean;
   fullWidth?: boolean;
+  disabled?: boolean;
 }
 
 export default function LanguageSelect({
@@ -38,6 +38,7 @@ export default function LanguageSelect({
   required = false,
   multiple = false,
   fullWidth = true,
+  disabled = false,
 }: LanguageSelectProps) {
   const handleChange = (event: SelectChangeEvent<string | string[]>) => {
     const newValue = event.target.value;
@@ -45,7 +46,7 @@ export default function LanguageSelect({
   };
 
   return (
-    <FormControl fullWidth={fullWidth} required={required}>
+    <FormControl fullWidth={fullWidth} required={required} disabled={disabled}>
       <InputLabel>{label}</InputLabel>
       <Select
         value={value}

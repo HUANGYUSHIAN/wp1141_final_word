@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  MenuItem,
   Typography,
   CircularProgress,
   Alert,
@@ -32,6 +33,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import VocabularyUpload from "@/components/VocabularyUpload";
 import LanguageSelect, { LANGUAGE_OPTIONS } from "@/components/LanguageSelect";
 import { useSession } from "next-auth/react";
@@ -58,6 +60,15 @@ export default function StudentVocabularyPage() {
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openBrowseDialog, setOpenBrowseDialog] = useState(false);
+  const [openGenerateDialog, setOpenGenerateDialog] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generateFormData, setGenerateFormData] = useState({
+    name: "",
+    langUse: "",
+    langExp: "",
+    topic: "",
+    level: "初級",
+  });
   const [selectedVocabulary, setSelectedVocabulary] = useState<Vocabulary | null>(null);
   const [words, setWords] = useState<any[]>([]);
   const [editingWords, setEditingWords] = useState<any[]>([]);
@@ -134,6 +145,7 @@ export default function StudentVocabularyPage() {
     setSelectedVocabulary(vocabulary);
     setWordsPage(0);
     setOpenViewDialog(true);
+    // 先獲取單字列表，這樣可以獲取正確的 wordsTotal
     await fetchWords(vocabulary.vocabularyId, 0);
   };
 
@@ -313,6 +325,52 @@ export default function StudentVocabularyPage() {
     }
   };
 
+  const handleGenerateVocabulary = async () => {
+    if (
+      !generateFormData.name ||
+      !generateFormData.langUse ||
+      !generateFormData.langExp ||
+      !generateFormData.topic ||
+      !generateFormData.level
+    ) {
+      setError("請填寫所有必要欄位");
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      setError("");
+
+      const response = await fetch("/api/student/vocabularies/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(generateFormData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setOpenGenerateDialog(false);
+        setGenerateFormData({
+          name: "",
+          langUse: "",
+          langExp: "",
+          topic: "",
+          level: "初級",
+        });
+        fetchMyVocabularies();
+        alert(`成功生成單字本「${data.vocabulary.name}」，包含 ${data.vocabulary.wordCount} 個單字！`);
+      } else {
+        const data = await response.json();
+        setError(data.error || "生成單字本失敗");
+      }
+    } catch (error) {
+      console.error("Error generating vocabulary:", error);
+      setError("生成單字本失敗");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleDeleteVocabulary = async (vocabulary: Vocabulary) => {
     // 檢查是否為建立者
     const isOwner = vocabulary.establisher === session?.userId;
@@ -349,13 +407,22 @@ export default function StudentVocabularyPage() {
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <Typography variant="h4">我的單字本</Typography>
-        <Button
-          variant="contained"
-          startIcon={<SearchIcon />}
-          onClick={handleBrowse}
-        >
-          瀏覽單字本
-        </Button>
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<AutoAwesomeIcon />}
+            onClick={() => setOpenGenerateDialog(true)}
+          >
+            AI 生成單字本
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<SearchIcon />}
+            onClick={handleBrowse}
+          >
+            瀏覽單字本
+          </Button>
+        </Box>
       </Box>
 
       {error && (
@@ -492,7 +559,7 @@ export default function StudentVocabularyPage() {
               <Typography><strong>解釋語言:</strong> {LANGUAGE_OPTIONS.find((opt) => opt.value === selectedVocabulary.langExp)?.label || selectedVocabulary.langExp}</Typography>
               <Typography><strong>版權:</strong> {selectedVocabulary.copyrights || "-"}</Typography>
               <Typography><strong>建立者:</strong> {selectedVocabulary.establisher}</Typography>
-              <Typography><strong>單字數:</strong> {selectedVocabulary.wordCount}</Typography>
+              <Typography><strong>單字數:</strong> {wordsTotal > 0 ? wordsTotal : selectedVocabulary.wordCount}</Typography>
               
               <Box sx={{ mt: 3 }}>
                 {isOwner(selectedVocabulary) && (
@@ -828,6 +895,124 @@ export default function StudentVocabularyPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenBrowseDialog(false)}>關閉</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* AI 生成單字本對話框 */}
+      <Dialog
+        open={openGenerateDialog}
+        onClose={() => !generating && setOpenGenerateDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>AI 生成單字本</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+            <TextField
+              label="單字本名稱"
+              value={generateFormData.name}
+              onChange={(e) =>
+                setGenerateFormData({ ...generateFormData, name: e.target.value })
+              }
+              fullWidth
+              required
+              disabled={generating}
+            />
+            <LanguageSelect
+              value={generateFormData.langUse}
+              onChange={(value) =>
+                setGenerateFormData({
+                  ...generateFormData,
+                  langUse: value as string,
+                })
+              }
+              label="背誦語言"
+              required
+              disabled={generating}
+            />
+            <LanguageSelect
+              value={generateFormData.langExp}
+              onChange={(value) =>
+                setGenerateFormData({
+                  ...generateFormData,
+                  langExp: value as string,
+                })
+              }
+              label="解釋語言"
+              required
+              disabled={generating}
+            />
+            <TextField
+              label="主題"
+              value={generateFormData.topic}
+              onChange={(e) =>
+                setGenerateFormData({
+                  ...generateFormData,
+                  topic: e.target.value,
+                })
+              }
+              fullWidth
+              required
+              placeholder="例如：日常用語、商務英語、旅遊日語等"
+              disabled={generating}
+              multiline
+              rows={2}
+            />
+            <TextField
+              select
+              label="程度"
+              value={generateFormData.level}
+              onChange={(e) =>
+                setGenerateFormData({
+                  ...generateFormData,
+                  level: e.target.value,
+                })
+              }
+              fullWidth
+              required
+              disabled={generating}
+              helperText="僅三選一：初級、中級、高級（影響詞彙難度）"
+            >
+              {["初級", "中級", "高級"].map((lvl) => (
+                <MenuItem key={lvl} value={lvl}>
+                  {lvl}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Alert severity="info">
+              單字數量預設 30，若少於 25 會自動補齊；僅支援日文 / 繁體中文 / 英文。
+            </Alert>
+            {generating && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <CircularProgress size={24} />
+                <Typography variant="body2" color="text.secondary">
+                  AI 正在生成單字本，請稍候...
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setOpenGenerateDialog(false)}
+            disabled={generating}
+          >
+            取消
+          </Button>
+          <Button
+            onClick={handleGenerateVocabulary}
+            variant="contained"
+            disabled={
+              generating ||
+              !generateFormData.name ||
+              !generateFormData.langUse ||
+              !generateFormData.langExp ||
+              !generateFormData.topic
+            }
+            startIcon={generating ? <CircularProgress size={20} /> : <AutoAwesomeIcon />}
+          >
+            {generating ? "生成中..." : "生成"}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

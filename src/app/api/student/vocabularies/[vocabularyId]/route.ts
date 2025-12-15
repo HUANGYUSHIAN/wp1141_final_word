@@ -19,16 +19,18 @@ export async function GET(
 
     const vocabulary = await prisma.vocabulary.findUnique({
       where: { vocabularyId },
-      include: {
-        _count: {
-          select: { words: true },
-        },
-      },
     });
 
     if (!vocabulary) {
       return NextResponse.json({ error: "找不到單字本" }, { status: 404 });
     }
+
+    // 直接使用 word.count 獲取單字數（更可靠）
+    const useLocalDb = process.env.DATABASE_local === "true";
+    const vocabId = useLocalDb ? vocabularyId : (vocabulary as any).id;
+    const wordCount = await prisma.word.count({
+      where: { vocabularyId: vocabId },
+    });
 
     const vocabularyWithCount = {
       vocabularyId: vocabulary.vocabularyId,
@@ -37,7 +39,7 @@ export async function GET(
       langExp: vocabulary.langExp,
       copyrights: vocabulary.copyrights,
       establisher: vocabulary.establisher,
-      wordCount: vocabulary._count?.words || 0,
+      wordCount: wordCount,
       createdAt: typeof vocabulary.createdAt === "string" 
         ? vocabulary.createdAt 
         : vocabulary.createdAt.toISOString(),
