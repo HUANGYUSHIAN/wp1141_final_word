@@ -33,12 +33,24 @@ function EditContent() {
   }, []);
 
   useEffect(() => {
-    // 如果未登入，重定向到登入頁
-    if (mounted && status === "unauthenticated") {
-      router.push("/login");
+    // 等待 mounted 和 session 加载完成
+    if (!mounted || status === "loading") {
+      return;
     }
-    // 如果已登入但已有身分，重定向到首頁
-    if (mounted && status === "authenticated" && session?.userId) {
+
+    // 如果明确未登入，重定向到登入頁
+    if (status === "unauthenticated") {
+      // 延迟一下，避免在 session 建立过程中的临时状态误判
+      const timer = setTimeout(() => {
+        if (status === "unauthenticated") {
+          router.push("/login");
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+
+    // 如果已登入，檢查用戶身分
+    if (status === "authenticated" && session?.userId) {
       checkUserType();
       // 顯示歡迎訊息（新用戶）
       if (typeof window !== "undefined") {
@@ -70,9 +82,14 @@ function EditContent() {
             router.push("/");
           }
         }
+        // 如果 dataType 为 null，保持在 /edit 页面让用户选择
+      } else {
+        // API 错误，但不重定向到登录（可能是临时错误）
+        console.error("Failed to fetch user data:", response.status);
       }
     } catch (error) {
       console.error("Error checking user type:", error);
+      // 网络错误，不重定向到登录（可能是临时网络问题）
     }
   };
 
@@ -95,11 +112,38 @@ function EditContent() {
       });
 
       if (response.ok) {
-        // 成功選擇身分，重定向到對應頁面
+        const data = await response.json();
+        
+        // 等待資料庫更新完成，輪詢確認 dataType 已更新
+        let retries = 10;
+        let confirmed = false;
+        
+        while (retries > 0 && !confirmed) {
+          try {
+            const checkResponse = await fetch("/api/user");
+            if (checkResponse.ok) {
+              const userData = await checkResponse.json();
+              if (userData.dataType === role) {
+                confirmed = true;
+                break;
+              }
+            }
+          } catch (error) {
+            console.error("Error checking user data:", error);
+          }
+          
+          // 等待 300ms 後再重試
+          await new Promise(resolve => setTimeout(resolve, 300));
+          retries--;
+        }
+        
+        // 無論確認成功與否，都直接重定向（資料庫已更新，只是可能還沒同步）
+        // 使用 window.location.replace 避免在歷史記錄中留下 /edit 頁面
+        const timestamp = Date.now();
         if (role === "Student") {
-          router.push("/student");
+          window.location.replace(`/student?t=${timestamp}&role=Student`);
         } else {
-          router.push("/supplier");
+          window.location.replace(`/supplier?t=${timestamp}&role=Supplier`);
         }
       } else {
         const data = await response.json();
@@ -135,8 +179,22 @@ function EditContent() {
     );
   }
 
-  if (status === "unauthenticated") {
-    return null;
+  // 如果明确未认证，显示加载状态而不是 null（避免 hydration mismatch）
+  if (status === "unauthenticated" && mounted) {
+    return (
+      <Container>
+        <Box
+          sx={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
   }
 
   return (

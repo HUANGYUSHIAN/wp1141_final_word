@@ -181,9 +181,20 @@ function HomeContent() {
       });
 
       if (response.ok) {
-        // 成功選擇身分，強制登出
-        console.log("[Home] Role selected successfully, signing out...");
-        await signOut({ callbackUrl: "/login", redirect: true });
+        // 成功選擇身分，直接重定向到對應頁面（不登出）
+        const data = await response.json();
+        const selectedRole = data.role || role;
+        
+        // 等待資料庫更新完成
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 直接重定向到對應頁面，使用 replace 避免歷史記錄
+        const timestamp = Date.now();
+        if (selectedRole === "Student") {
+          window.location.replace(`/student?t=${timestamp}&role=Student`);
+        } else {
+          window.location.replace(`/supplier?t=${timestamp}&role=Supplier`);
+        }
       } else {
         const data = await response.json();
         setRoleError(data.error || "選擇身分失敗，請稍後再試");

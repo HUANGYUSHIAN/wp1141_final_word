@@ -42,32 +42,42 @@ export async function POST(request: Request) {
       data: { dataType: role },
     });
 
-    // 根據身分創建對應的資料
+    // 根據身分創建對應的資料（使用 upsert 避免重複創建）
     if (role === "Student") {
-      // 檢查是否已存在 Student 資料
-      if (!user.studentData) {
-        await prisma.student.create({
-          data: {
-            userId: session.userId,
-            lvocabuIDs: [],
-            lcouponIDs: [],
-            lfriendIDs: [],
-          },
-        });
-      }
+      // 使用 upsert 確保不會重複創建
+      await prisma.student.upsert({
+        where: { userId: session.userId },
+        update: {}, // 如果已存在，不更新
+        create: {
+          userId: session.userId,
+          lvocabuIDs: [],
+          lcouponIDs: [],
+          lfriendIDs: [],
+        },
+      });
     } else if (role === "Supplier") {
-      // 檢查是否已存在 Supplier 資料
-      if (!user.supplierData) {
-        await prisma.supplier.create({
-          data: {
-            userId: session.userId,
-            lsuppcoIDs: [],
-          },
-        });
-      }
+      // 使用 upsert 確保不會重複創建
+      await prisma.supplier.upsert({
+        where: { userId: session.userId },
+        update: {}, // 如果已存在，不更新
+        create: {
+          userId: session.userId,
+          lsuppcoIDs: [],
+        },
+      });
     }
 
-    return NextResponse.json({ success: true, role });
+    // 重新查詢用戶資料以確認更新成功
+    const updatedUser = await prisma.user.findUnique({
+      where: { userId: session.userId },
+      select: { dataType: true },
+    });
+
+    return NextResponse.json({ 
+      success: true, 
+      role,
+      dataType: updatedUser?.dataType 
+    });
   } catch (error: any) {
     console.error("Error selecting role:", error);
     return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });

@@ -54,52 +54,130 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!mounted) return;
     
+    // 等待 session 加载完成
+    if (status === "loading") {
+      setLoading(true);
+      return;
+    }
+    
     if (status === "authenticated" && session?.userId) {
       checkStudentStatus();
     } else if (status === "unauthenticated") {
-      router.push("/login");
-    } else if (status === "loading") {
-      setLoading(true);
+      // 延迟检查，避免在 session 建立过程中的临时状态误判
+      const timer = setTimeout(() => {
+        if (status === "unauthenticated") {
+          router.push("/login");
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
     }
   }, [mounted, status, session, router]);
 
   const checkStudentStatus = async () => {
     try {
-      const response = await fetch("/api/user");
-      if (response.ok) {
-        const userData = await response.json();
-        if (userData.dataType === "Student") {
-          setIsStudent(true);
+      // 检查 URL 参数，如果是从选择角色页面重定向来的，增加重试次数
+      let fromRoleSelection = false;
+      if (typeof window !== "undefined") {
+        const urlParams = new URLSearchParams(window.location.search);
+        fromRoleSelection = urlParams.get("role") === "Student";
+      }
+      
+      // 添加重试机制，因为选择角色后数据库更新可能需要一点时间
+      // 如果是从角色选择页面来的，增加重试次数
+      let retries = fromRoleSelection ? 20 : 10;
+      let userData = null;
+      
+      while (retries > 0) {
+        const response = await fetch("/api/user");
+        
+        if (response.ok) {
+          userData = await response.json();
+          if (userData.dataType === "Student") {
+            setIsStudent(true);
+            setLoading(false);
+            // 清除 URL 参数
+            if (fromRoleSelection && typeof window !== "undefined") {
+              window.history.replaceState({}, "", "/student");
+            }
+            return;
+          } else if (userData.dataType) {
+            // 如果是其他角色，重定向到首页
+            router.push("/");
+            setLoading(false);
+            return;
+          }
+          // 如果 dataType 为 null，等待一下再重试
+          if (retries > 1) {
+            await new Promise(resolve => setTimeout(resolve, fromRoleSelection ? 300 : 500));
+          }
         } else {
-          router.push("/");
+          // 檢查是否需要清除 session
+          const data = await response.json().catch(() => ({}));
+          
+          // 只有在明確標記 clearSession: true 且是 404（找不到用戶）時才清除 session
+          // 401（未登入）和 403（帳號鎖定）也需要清除
+          // 但 503（服務不可用）和 500（伺服器錯誤）不應該清除 session
+          if (data.clearSession && (response.status === 401 || response.status === 404 || response.status === 403)) {
+            // 確認資料庫中真的沒有用戶，才清除 session
+            console.log("Clearing session due to:", response.status, data);
+            await signOut({ callbackUrl: "/login", redirect: true });
+            setLoading(false);
+            return;
+          }
+          
+          // 如果是暫時的錯誤（503），不應該清除 session
+          if (response.status === 503) {
+            console.warn("Database temporarily unavailable, keeping session");
+            setLoading(false);
+            return;
+          }
+          
+          // 其他錯誤，等待後重試
+          if (retries > 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
         }
-      } else {
-        // 檢查是否需要清除 session
-        const data = await response.json().catch(() => ({}));
-        
-        // 只有在明確標記 clearSession: true 且是 404（找不到用戶）時才清除 session
-        // 401（未登入）和 403（帳號鎖定）也需要清除
-        // 但 503（服務不可用）和 500（伺服器錯誤）不應該清除 session
-        if (data.clearSession && (response.status === 401 || response.status === 404 || response.status === 403)) {
-          // 確認資料庫中真的沒有用戶，才清除 session
-          console.log("Clearing session due to:", response.status, data);
-          await signOut({ callbackUrl: "/login", redirect: true });
-          return;
+        retries--;
+      }
+      
+      // 如果重试后还是没有 dataType，且是从角色选择页面来的，继续等待
+      // 否则重定向到选择页面（不登出）
+      if (!userData || !userData.dataType) {
+        if (fromRoleSelection) {
+          // 如果是从角色选择页面来的，再等待一下
+          console.log("Still waiting for dataType update...");
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          // 再次检查
+          const finalCheck = await fetch("/api/user");
+          if (finalCheck.ok) {
+            const finalData = await finalCheck.json();
+            if (finalData.dataType === "Student") {
+              setIsStudent(true);
+              setLoading(false);
+              if (typeof window !== "undefined") {
+                window.history.replaceState({}, "", "/student");
+              }
+              return;
+            }
+          }
         }
-        
-        // 如果是暫時的錯誤（503），不應該清除 session
-        if (response.status === 503) {
-          console.warn("Database temporarily unavailable, keeping session");
-          return;
-        }
-        
-        router.push("/login");
+        console.log("No dataType found after retries, redirecting to /edit");
+        router.push("/edit");
+        setLoading(false);
+        return;
+      }
+      
+      // 如果是其他角色，重定向到首页
+      if (userData.dataType !== "Student") {
+        router.push("/");
+        setLoading(false);
       }
     } catch (error) {
       console.error("Error checking student status:", error);
       // 網絡錯誤或其他錯誤，不應該立即清除 session
       // 可能是暫時的網絡問題或資料庫連接問題
-    } finally {
+      // 重定向到選擇頁面而不是登出
+      router.push("/edit");
       setLoading(false);
     }
   };

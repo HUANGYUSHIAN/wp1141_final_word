@@ -17,8 +17,9 @@ import { useSession } from 'next-auth/react'
 import { getLanguageLabel, LANGUAGE_OPTIONS } from '@/components/LanguageSelect'
 import WordleGame from '@/components/WordleGame'
 import SnakeGame from '@/components/SnakeGame'
+import AIGame from '@/components/AIGame'
 
-type GameType = 'wordle' | 'snake'
+type GameType = 'wordle' | 'snake' | 'ai-king'
 type GameStage = 'setup' | 'playing' | 'result'
 
 interface Vocabulary {
@@ -47,6 +48,7 @@ export default function GamePage() {
   
   const [stage, setStage] = useState<GameStage>('setup')
   const [selectedGameType, setSelectedGameType] = useState<GameType>('wordle')
+  const [aiGameResult, setAiGameResult] = useState<{ playerScore: number; aiScore: number; wrongAnswers: any[] } | null>(null)
   const [selectedLangUse, setSelectedLangUse] = useState('')
   const [selectedLangExp, setSelectedLangExp] = useState('')
   const [selectedVocabId, setSelectedVocabId] = useState('')
@@ -188,16 +190,53 @@ export default function GamePage() {
     }
   }
 
+  const handleAIGameEnd = async (playerScore: number, aiScore: number, wrongAnswers: any[]) => {
+    setAiGameResult({ playerScore, aiScore, wrongAnswers })
+    setStage('result')
+    
+    // 計算點數：玩家得分 - 電腦得分，如果>0則四捨五入取整數
+    const finalScore = playerScore - aiScore
+    const earnedPoints = finalScore > 0 ? Math.round(finalScore) : 0
+
+    if (earnedPoints > 0) {
+      try {
+        const response = await fetch('/api/student/game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accuracy: 100,
+            totalTime: 200000, // 20題 * 10秒
+            questionCount: 20,
+            correctCount: 20 - wrongAnswers.length,
+            earnedPoints,
+          }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setEarnedPoints(data.earnedPoints)
+          setTotalPoints(data.totalPoints)
+        }
+      } catch (error) {
+        console.error('保存點數失敗:', error)
+      }
+    } else {
+      setEarnedPoints(0)
+    }
+  }
+
   const handleBack = () => {
     setStage('setup')
     setEarnedPoints(null)
     setTotalPoints(null)
+    setAiGameResult(null)
   }
 
   const handleReset = () => {
     setStage('setup')
     setEarnedPoints(null)
     setTotalPoints(null)
+    setAiGameResult(null)
   }
 
   const handlePlayAgain = () => {
@@ -241,6 +280,7 @@ export default function GamePage() {
               >
                 <MenuItem value="wordle">猜謎遊戲 (Wordle 風格)</MenuItem>
                 <MenuItem value="snake">貪食蛇遊戲</MenuItem>
+                <MenuItem value="ai-king">電腦知識王</MenuItem>
               </Select>
             </FormControl>
 
@@ -348,6 +388,16 @@ export default function GamePage() {
           onBack={handleBack}
         />
       )
+    } else if (selectedGameType === 'ai-king') {
+      return (
+        <AIGame
+          words={selectedVocab.words}
+          langUse={selectedLangUse}
+          langExp={selectedLangExp}
+          onGameEnd={handleAIGameEnd}
+          onBack={handleBack}
+        />
+      )
     }
   }
 
@@ -359,10 +409,20 @@ export default function GamePage() {
           <Typography variant="h5" gutterBottom>
             遊戲結果
           </Typography>
+          {selectedGameType === 'ai-king' && aiGameResult && (
+            <Box sx={{ mt: 3, mb: 2 }}>
+              <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+                你的得分: {aiGameResult.playerScore.toFixed(3)}
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+                電腦得分: {aiGameResult.aiScore.toFixed(3)}
+              </Typography>
+            </Box>
+          )}
           <Box sx={{ mt: 3, mb: 2 }}>
             {earnedPoints !== null && (
-              <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
-                獲得點數: +{earnedPoints} 點
+              <Typography variant="h6" color={earnedPoints > 0 ? 'primary' : 'text.secondary'} sx={{ mt: 2 }}>
+                獲得點數: {earnedPoints > 0 ? `+${earnedPoints}` : earnedPoints} 點
               </Typography>
             )}
             {totalPoints !== null && (
