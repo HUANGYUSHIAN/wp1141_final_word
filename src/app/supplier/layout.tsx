@@ -23,6 +23,7 @@ import StoreIcon from "@mui/icons-material/Store";
 import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { signOut } from "next-auth/react";
+import AIAssistant from "@/components/AIAssistant";
 
 const drawerWidth = 240;
 
@@ -233,11 +234,13 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
           "& .MuiDrawer-paper": {
             width: drawerWidth,
             boxSizing: "border-box",
+            display: "flex",
+            flexDirection: "column",
           },
         }}
       >
         <Toolbar />
-        <Box sx={{ overflow: "auto" }}>
+        <Box sx={{ overflow: "auto", flex: 1 }}>
           <List>
             {menuItems.map((item) => (
               <ListItem key={item.path} disablePadding>
@@ -251,6 +254,18 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
               </ListItem>
             ))}
           </List>
+        </Box>
+        <Box
+          sx={{
+            p: 2,
+            borderTop: 1,
+            borderColor: "divider",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <AIAssistant />
         </Box>
       </Drawer>
       <Box
@@ -292,4 +307,3 @@ export default function SupplierLayout({
     </Suspense>
   );
 }
-

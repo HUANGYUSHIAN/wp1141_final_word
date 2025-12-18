@@ -45,6 +45,7 @@ interface User {
   language: string | null;
   isLock: boolean;
   dataType: string | null;
+  llmQuota?: string | null;
   createdAt: string;
 }
 
@@ -234,19 +235,20 @@ export default function AdminUserPage() {
               <TableCell>手機</TableCell>
               <TableCell>身分</TableCell>
               <TableCell>狀態</TableCell>
+              <TableCell>LLM 使用額度</TableCell>
               <TableCell align="right">操作</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={8} align="center">
                   <CircularProgress />
                 </TableCell>
               </TableRow>
             ) : users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={8} align="center">
                   沒有資料
                 </TableCell>
               </TableRow>
@@ -278,6 +280,21 @@ export default function AdminUserPage() {
                       color={user.isLock ? "error" : "success"}
                       size="small"
                     />
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      try {
+                        if (!user.llmQuota) return "0";
+                        const quota = JSON.parse(user.llmQuota);
+                        const today = new Date().toISOString().split("T")[0];
+                        const todayRecord = quota.find((r: any) => r.date === today);
+                        const todayTokens = todayRecord ? todayRecord.tokens : 0;
+                        const totalTokens = quota.reduce((sum: number, r: any) => sum + (r.tokens || 0), 0);
+                        return `今日: ${todayTokens.toLocaleString()} / 總計: ${totalTokens.toLocaleString()}`;
+                      } catch {
+                        return "0";
+                      }
+                    })()}
                   </TableCell>
                   <TableCell align="right">
                     <IconButton
@@ -343,6 +360,34 @@ export default function AdminUserPage() {
               <Typography><strong>身分:</strong> {selectedUser.dataType || "未選擇"}</Typography>
               <Typography><strong>狀態:</strong> {selectedUser.isLock ? "已鎖定" : "正常"}</Typography>
               <Typography><strong>建立時間:</strong> {new Date(selectedUser.createdAt).toLocaleString()}</Typography>
+              <Box sx={{ mt: 2 }}>
+                <Typography><strong>LLM API Token 使用額度:</strong></Typography>
+                {(() => {
+                  try {
+                    if (!selectedUser.llmQuota) {
+                      return <Typography variant="body2" color="text.secondary">無使用記錄</Typography>;
+                    }
+                    const quota = JSON.parse(selectedUser.llmQuota);
+                    const today = new Date().toISOString().split("T")[0];
+                    const todayRecord = quota.find((r: any) => r.date === today);
+                    const todayTokens = todayRecord ? todayRecord.tokens : 0;
+                    const totalTokens = quota.reduce((sum: number, r: any) => sum + (r.tokens || 0), 0);
+                    return (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="body2">今日使用: {todayTokens.toLocaleString()} tokens</Typography>
+                        <Typography variant="body2">總計使用: {totalTokens.toLocaleString()} tokens</Typography>
+                        {quota.length > 0 && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                            記錄期間: {quota[0].date} ~ {quota[quota.length - 1].date}
+                          </Typography>
+                        )}
+                      </Box>
+                    );
+                  } catch {
+                    return <Typography variant="body2" color="error">解析失敗</Typography>;
+                  }
+                })()}
+              </Box>
             </Box>
           )}
         </DialogContent>

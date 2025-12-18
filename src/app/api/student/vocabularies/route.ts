@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
           copyrights: v.copyrights,
           establisher: v.establisher,
           wordCount: wordCount,
+          public: v.public !== undefined ? v.public : true,
           createdAt: typeof v.createdAt === "string" ? v.createdAt : v.createdAt.toISOString(),
         };
       })

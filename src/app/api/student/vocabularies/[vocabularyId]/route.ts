@@ -40,6 +40,7 @@ export async function GET(
       copyrights: vocabulary.copyrights,
       establisher: vocabulary.establisher,
       wordCount: wordCount,
+      public: vocabulary.public !== undefined ? vocabulary.public : true,
       createdAt: typeof vocabulary.createdAt === "string" 
         ? vocabulary.createdAt 
         : vocabulary.createdAt.toISOString(),
@@ -66,7 +67,7 @@ export async function PUT(
 
     const { vocabularyId } = await params;
     const body = await request.json();
-    const { name, langUse, langExp, copyrights } = body;
+    const { name, langUse, langExp, copyrights, public: isPublic } = body;
 
     // 檢查單字本是否存在，並驗證建立者
     const vocabulary = await prisma.vocabulary.findUnique({
@@ -90,6 +91,7 @@ export async function PUT(
         langUse,
         langExp,
         copyrights: copyrights || null,
+        public: isPublic !== undefined ? isPublic : true,
       },
     });
 

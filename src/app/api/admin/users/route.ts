@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
           language: true,
           isLock: true,
           dataType: true,
+          llmQuota: true,
           createdAt: true,
         },
       }),

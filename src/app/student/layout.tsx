@@ -24,7 +24,9 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import HistoryIcon from "@mui/icons-material/History";
 import LogoutIcon from "@mui/icons-material/Logout";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { signOut } from "next-auth/react";
+import AIAssistant from "@/components/AIAssistant";
 
 const drawerWidth = 240;
 
@@ -245,11 +247,13 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
           "& .MuiDrawer-paper": {
             width: drawerWidth,
             boxSizing: "border-box",
+            display: "flex",
+            flexDirection: "column",
           },
         }}
       >
         <Toolbar />
-        <Box sx={{ overflow: "auto" }}>
+        <Box sx={{ overflow: "auto", flex: 1 }}>
           <List>
             {menuItems.map((item) => (
               <ListItem key={item.path} disablePadding>
@@ -263,6 +267,18 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
               </ListItem>
             ))}
           </List>
+        </Box>
+        <Box
+          sx={{
+            p: 2,
+            borderTop: 1,
+            borderColor: "divider",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <AIAssistant />
         </Box>
       </Drawer>
       <Box

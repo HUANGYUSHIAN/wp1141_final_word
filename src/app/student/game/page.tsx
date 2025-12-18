@@ -7,20 +7,32 @@ import {
   Typography,
   Paper,
   Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Select,
   MenuItem,
   FormControl,
   InputLabel,
   CircularProgress,
+  Grid,
+  Card,
+  CardContent,
+  CardMedia,
+  CardActionArea,
 } from '@mui/material'
 import { useSession } from 'next-auth/react'
 import { getLanguageLabel, LANGUAGE_OPTIONS } from '@/components/LanguageSelect'
 import WordleGame from '@/components/WordleGame'
 import SnakeGame from '@/components/SnakeGame'
 import AIGame from '@/components/AIGame'
+import SportsEsportsIcon from '@mui/icons-material/SportsEsports'
+import ExtensionIcon from '@mui/icons-material/Extension'
+import SmartToyIcon from '@mui/icons-material/SmartToy'
 
 type GameType = 'wordle' | 'snake' | 'ai-king'
-type GameStage = 'setup' | 'playing' | 'result'
+type GameStage = 'select' | 'setup' | 'playing' | 'result'
 
 interface Vocabulary {
   vocabularyId: string
@@ -39,6 +51,30 @@ interface Word {
   sentence?: string | null
 }
 
+const games = [
+  {
+    id: 'wordle' as GameType,
+    name: '猜謎遊戲',
+    description: 'Wordle 風格猜單字遊戲',
+    icon: <ExtensionIcon sx={{ fontSize: 60 }} />,
+    color: '#1976d2',
+  },
+  {
+    id: 'snake' as GameType,
+    name: '貪食蛇遊戲',
+    description: '經典貪食蛇，邊玩邊學單字',
+    icon: <SportsEsportsIcon sx={{ fontSize: 60 }} />,
+    color: '#2e7d32',
+  },
+  {
+    id: 'ai-king' as GameType,
+    name: '電腦知識王',
+    description: '與 AI 對戰，看誰答對更多',
+    icon: <SmartToyIcon sx={{ fontSize: 60 }} />,
+    color: '#ed6c02',
+  },
+]
+
 export default function GamePage() {
   const router = useRouter()
   const { data: session } = useSession()
@@ -46,13 +82,14 @@ export default function GamePage() {
   const [vocabularies, setVocabularies] = useState<Vocabulary[]>([])
   const [filteredVocabularies, setFilteredVocabularies] = useState<Vocabulary[]>([])
   
-  const [stage, setStage] = useState<GameStage>('setup')
-  const [selectedGameType, setSelectedGameType] = useState<GameType>('wordle')
+  const [stage, setStage] = useState<GameStage>('select')
+  const [selectedGameType, setSelectedGameType] = useState<GameType | null>(null)
   const [aiGameResult, setAiGameResult] = useState<{ playerScore: number; aiScore: number; wrongAnswers: any[] } | null>(null)
   const [selectedLangUse, setSelectedLangUse] = useState('')
   const [selectedLangExp, setSelectedLangExp] = useState('')
   const [selectedVocabId, setSelectedVocabId] = useState('')
   const [selectedVocab, setSelectedVocab] = useState<any>(null)
+  const [openSetupDialog, setOpenSetupDialog] = useState(false)
   
   const [earnedPoints, setEarnedPoints] = useState<number | null>(null)
   const [totalPoints, setTotalPoints] = useState<number | null>(null)
@@ -141,6 +178,11 @@ export default function GamePage() {
     }
   }
 
+  const handleGameSelect = (gameType: GameType) => {
+    setSelectedGameType(gameType)
+    setOpenSetupDialog(true)
+  }
+
   const handleStartGame = () => {
     if (!selectedVocab || !selectedVocab.words || selectedVocab.words.length === 0) {
       alert('請選擇有效的單字本')
@@ -148,13 +190,13 @@ export default function GamePage() {
     }
 
     // 從設定頁面開始新遊戲時，清除之前的遊戲狀態
-    // 使用與 WordleGame 相同的 key 格式
     if (typeof window !== 'undefined') {
       const storageKey = `wordle-game-${selectedLangUse}-${selectedLangExp}`
       sessionStorage.removeItem(storageKey)
     }
     
     setResetGame(true)
+    setOpenSetupDialog(false)
     setStage('playing')
   }
 
@@ -226,17 +268,27 @@ export default function GamePage() {
   }
 
   const handleBack = () => {
-    setStage('setup')
+    setStage('select')
     setEarnedPoints(null)
     setTotalPoints(null)
     setAiGameResult(null)
+    setSelectedGameType(null)
+    setSelectedVocab(null)
+    setSelectedVocabId('')
+    setSelectedLangUse('')
+    setSelectedLangExp('')
   }
 
   const handleReset = () => {
-    setStage('setup')
+    setStage('select')
     setEarnedPoints(null)
     setTotalPoints(null)
     setAiGameResult(null)
+    setSelectedGameType(null)
+    setSelectedVocab(null)
+    setSelectedVocabId('')
+    setSelectedLangUse('')
+    setSelectedLangExp('')
   }
 
   const handlePlayAgain = () => {
@@ -259,95 +311,129 @@ export default function GamePage() {
     )
   }
 
-  if (stage === 'setup') {
-  return (
-    <Box>
-        <Box sx={{ mt: 4 }}>
-          <Paper sx={{ p: 4 }}>
-            <Typography variant="h5" gutterBottom>
-              單字遊戲
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              選擇遊戲類型並開始遊戲
-      </Typography>
-
-            <FormControl fullWidth sx={{ mt: 2, mb: 2 }}>
-              <InputLabel>遊戲類型</InputLabel>
-              <Select
-                value={selectedGameType}
-                onChange={(e) => setSelectedGameType(e.target.value as GameType)}
-                label="遊戲類型"
+  if (stage === 'select') {
+    return (
+      <Box>
+        <Typography variant="h4" sx={{ mb: 3 }}>
+          單字遊戲
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+          選擇遊戲類型並開始遊戲
+        </Typography>
+        <Grid container spacing={3}>
+          {games.map((game) => (
+            <Grid item xs={12} sm={6} md={4} key={game.id}>
+              <Card
+                sx={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                  },
+                }}
               >
-                <MenuItem value="wordle">猜謎遊戲 (Wordle 風格)</MenuItem>
-                <MenuItem value="snake">貪食蛇遊戲</MenuItem>
-                <MenuItem value="ai-king">電腦知識王</MenuItem>
-              </Select>
-            </FormControl>
+                <CardActionArea onClick={() => handleGameSelect(game.id)} sx={{ flex: 1, p: 3 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minHeight: 200,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        color: game.color,
+                        mb: 2,
+                      }}
+                    >
+                      {game.icon}
+                    </Box>
+                    <Typography variant="h5" gutterBottom>
+                      {game.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" align="center">
+                      {game.description}
+                    </Typography>
+                  </Box>
+                </CardActionArea>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
 
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>背誦語言</InputLabel>
-              <Select
-                value={selectedLangUse}
-                onChange={(e) => setSelectedLangUse(e.target.value)}
-                label="背誦語言"
-              >
-                {LANGUAGE_OPTIONS.map((lang) => (
-                  <MenuItem key={lang.value} value={lang.value}>
-                    {lang.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>解釋語言</InputLabel>
-              <Select
-                value={selectedLangExp}
-                onChange={(e) => setSelectedLangExp(e.target.value)}
-                label="解釋語言"
-              >
-                {LANGUAGE_OPTIONS.map((lang) => (
-                  <MenuItem key={lang.value} value={lang.value}>
-                    {lang.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>選擇單字本</InputLabel>
-              <Select
-                value={selectedVocabId}
-                onChange={(e) => handleVocabChange(e.target.value)}
-                label="選擇單字本"
-                disabled={!selectedLangUse || !selectedLangExp}
-              >
-                {filteredVocabularies.length > 0 ? (
-                  filteredVocabularies.map((vocab) => (
-                    <MenuItem key={vocab.vocabularyId} value={vocab.vocabularyId}>
-                      {vocab.name} ({getLanguageLabel(vocab.langUse)} - {getLanguageLabel(vocab.langExp)})
+        {/* 設定對話框 */}
+        <Dialog open={openSetupDialog} onClose={() => setOpenSetupDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>設定遊戲</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>背誦語言</InputLabel>
+                <Select
+                  value={selectedLangUse}
+                  onChange={(e) => setSelectedLangUse(e.target.value)}
+                  label="背誦語言"
+                >
+                  {LANGUAGE_OPTIONS.map((lang) => (
+                    <MenuItem key={lang.value} value={lang.value}>
+                      {lang.label}
                     </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem disabled>
-                    {selectedLangUse && selectedLangExp ? '沒有符合的單字本' : '請先選擇語言'}
-                  </MenuItem>
-                )}
-              </Select>
-            </FormControl>
+                  ))}
+                </Select>
+              </FormControl>
 
+              <FormControl fullWidth>
+                <InputLabel>解釋語言</InputLabel>
+                <Select
+                  value={selectedLangExp}
+                  onChange={(e) => setSelectedLangExp(e.target.value)}
+                  label="解釋語言"
+                >
+                  {LANGUAGE_OPTIONS.map((lang) => (
+                    <MenuItem key={lang.value} value={lang.value}>
+                      {lang.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth>
+                <InputLabel>選擇單字本</InputLabel>
+                <Select
+                  value={selectedVocabId}
+                  onChange={(e) => handleVocabChange(e.target.value)}
+                  label="選擇單字本"
+                  disabled={!selectedLangUse || !selectedLangExp}
+                >
+                  {filteredVocabularies.length > 0 ? (
+                    filteredVocabularies.map((vocab) => (
+                      <MenuItem key={vocab.vocabularyId} value={vocab.vocabularyId}>
+                        {vocab.name} ({getLanguageLabel(vocab.langUse)} - {getLanguageLabel(vocab.langExp)})
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>
+                      {selectedLangUse && selectedLangExp ? '沒有符合的單字本' : '請先選擇語言'}
+                    </MenuItem>
+                  )}
+                </Select>
+              </FormControl>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenSetupDialog(false)}>取消</Button>
             <Button
               variant="contained"
-              fullWidth
-              size="large"
               onClick={handleStartGame}
               disabled={!selectedVocab || !selectedLangUse || !selectedLangExp}
-              sx={{ mt: 2 }}
             >
               開始遊戲
             </Button>
-      </Paper>
-    </Box>
+          </DialogActions>
+        </Dialog>
       </Box>
     )
   }
@@ -438,8 +524,8 @@ export default function GamePage() {
             <Button variant="outlined" onClick={handleReset} sx={{ mr: 2 }}>
               重新開始
             </Button>
-            <Button variant="outlined" onClick={() => setStage('setup')}>
-              返回設定
+            <Button variant="outlined" onClick={handleBack}>
+              返回遊戲選擇
             </Button>
           </Box>
         </Paper>

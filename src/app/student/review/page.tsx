@@ -6,14 +6,24 @@ import {
   Box,
   Typography,
   Paper,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  IconButton,
   CircularProgress,
+  Grid,
+  TextField,
+  Button,
 } from '@mui/material'
 import { useSession } from 'next-auth/react'
+import VisibilityIcon from '@mui/icons-material/Visibility'
+import SearchIcon from '@mui/icons-material/Search'
 import ReviewCard from '@/components/ReviewCard'
+import LanguageSelect, { LANGUAGE_OPTIONS } from '@/components/LanguageSelect'
 
 interface Vocabulary {
   vocabularyId: string
@@ -21,6 +31,8 @@ interface Vocabulary {
   langUse: string
   langExp: string
   wordCount: number
+  establisher: string
+  createdAt: string
 }
 
 interface Word {
@@ -36,29 +48,61 @@ export default function ReviewPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const [vocabularies, setVocabularies] = useState<Vocabulary[]>([])
+  const [filteredVocabularies, setFilteredVocabularies] = useState<Vocabulary[]>([])
   const [selectedVocabId, setSelectedVocabId] = useState('')
   const [selectedVocab, setSelectedVocab] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [browseLoading, setBrowseLoading] = useState(false)
+  const [browsePage, setBrowsePage] = useState(0)
+  const [browseTotal, setBrowseTotal] = useState(0)
+  const [browseFilters, setBrowseFilters] = useState({
+    name: '',
+    langUse: [] as string[],
+    langExp: [] as string[],
+  })
 
   useEffect(() => {
     if (!session) {
       router.push('/login')
       return
     }
-    loadVocabularies()
+    fetchBrowseVocabularies(0)
     setLoading(false)
   }, [router, session])
 
-  const loadVocabularies = async () => {
+  const fetchBrowseVocabularies = async (pageNum: number = 0) => {
     try {
-      const response = await fetch('/api/student/vocabularies')
+      setBrowseLoading(true)
+      const params = new URLSearchParams()
+      params.append('page', pageNum.toString())
+      params.append('limit', '10')
+      
+      if (browseFilters.name) {
+        params.append('name', browseFilters.name)
+      }
+      browseFilters.langUse.forEach((lang) => {
+        params.append('langUse', lang)
+      })
+      browseFilters.langExp.forEach((lang) => {
+        params.append('langExp', lang)
+      })
+
+      const response = await fetch(`/api/student/vocabularies/browse?${params.toString()}`)
       if (response.ok) {
         const data = await response.json()
         setVocabularies(data.vocabularies || [])
+        setBrowseTotal(data.total || 0)
+        setBrowsePage(pageNum)
       }
     } catch (error) {
-      console.error('載入單字本失敗:', error)
+      console.error('Error browsing vocabularies:', error)
+    } finally {
+      setBrowseLoading(false)
     }
+  }
+
+  const handleBrowseSearch = () => {
+    fetchBrowseVocabularies(0)
   }
 
   const handleVocabChange = async (vocabId: string) => {
@@ -94,27 +138,134 @@ export default function ReviewPage() {
     )
   }
 
+  if (selectedVocab && selectedVocab.words && selectedVocab.words.length > 0) {
+    return (
+      <Box>
+        <Button variant="outlined" onClick={() => {
+          setSelectedVocab(null)
+          setSelectedVocabId('')
+        }} sx={{ mb: 2 }}>
+          返回單字本選擇
+        </Button>
+        <ReviewCard vocabulary={selectedVocab} />
+      </Box>
+    )
+  }
+
   return (
     <Box>
-        <Box sx={{ mt: 4, mb: 2 }}>
-          <FormControl fullWidth>
-            <InputLabel>選擇單字本</InputLabel>
-            <Select
-              value={selectedVocabId}
-              onChange={(e) => handleVocabChange(e.target.value)}
-              label="選擇單字本"
-            >
-              {vocabularies.map((vocab) => (
-                <MenuItem key={vocab.vocabularyId} value={vocab.vocabularyId}>
-                  {vocab.name} ({vocab.langUse} - {vocab.langExp})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+      <Typography variant="h4" sx={{ mb: 3 }}>
+        單字複習
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        選擇單字本開始複習
+      </Typography>
+
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} md={4}>
+            <TextField
+              label="名稱"
+              value={browseFilters.name}
+              onChange={(e) =>
+                setBrowseFilters({ ...browseFilters, name: e.target.value })
+              }
+              fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <LanguageSelect
+              value={browseFilters.langUse}
+              onChange={(value) =>
+                setBrowseFilters({ ...browseFilters, langUse: value as string[] })
+              }
+              label="背誦語言"
+              multiple
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <LanguageSelect
+              value={browseFilters.langExp}
+              onChange={(value) =>
+                setBrowseFilters({ ...browseFilters, langExp: value as string[] })
+              }
+              label="解釋語言"
+              multiple
+            />
+          </Grid>
+        </Grid>
+        <Button
+          variant="contained"
+          startIcon={<SearchIcon />}
+          onClick={handleBrowseSearch}
+        >
+          搜尋
+        </Button>
+      </Paper>
+
+      {browseLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
         </Box>
-        {selectedVocab && selectedVocab.words && selectedVocab.words.length > 0 && (
-          <ReviewCard vocabulary={selectedVocab} />
-        )}
+      ) : (
+        <>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>名稱</TableCell>
+                  <TableCell>背誦語言</TableCell>
+                  <TableCell>解釋語言</TableCell>
+                  <TableCell>單字數</TableCell>
+                  <TableCell>建立者</TableCell>
+                  <TableCell align="right">操作</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {vocabularies.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      沒有找到符合條件的單字本
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  vocabularies.map((vocabulary) => (
+                    <TableRow key={vocabulary.vocabularyId}>
+                      <TableCell>{vocabulary.name}</TableCell>
+                      <TableCell>
+                        {LANGUAGE_OPTIONS.find((opt) => opt.value === vocabulary.langUse)?.label || vocabulary.langUse}
+                      </TableCell>
+                      <TableCell>
+                        {LANGUAGE_OPTIONS.find((opt) => opt.value === vocabulary.langExp)?.label || vocabulary.langExp}
+                      </TableCell>
+                      <TableCell>{vocabulary.wordCount}</TableCell>
+                      <TableCell>{vocabulary.establisher}</TableCell>
+                      <TableCell align="right">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleVocabChange(vocabulary.vocabularyId)}
+                          color="primary"
+                          title="查看"
+                        >
+                          <VisibilityIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            component="div"
+            count={browseTotal}
+            page={browsePage}
+            onPageChange={(e, newPage) => fetchBrowseVocabularies(newPage)}
+            rowsPerPage={10}
+            rowsPerPageOptions={[10]}
+          />
+        </>
+      )}
     </Box>
   )
 }

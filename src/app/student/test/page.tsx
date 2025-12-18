@@ -21,13 +21,24 @@ import {
   CardContent,
   Chip,
   IconButton,
+  Grid,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import VolumeUpIcon from '@mui/icons-material/VolumeUp'
+import SearchIcon from '@mui/icons-material/Search'
+import VisibilityIcon from '@mui/icons-material/Visibility'
 import { useSession, signOut } from 'next-auth/react'
 import { examiner, Question, QuestionType } from '@/lib/utils/examiner'
 import { getLanguageLabel, LANGUAGE_OPTIONS } from '@/components/LanguageSelect'
+import LanguageSelect from '@/components/LanguageSelect'
 import { speakAsync } from '@/lib/utils/speechUtils'
 import { normalizeLanguage } from '@/lib/utils/languageUtils'
 
@@ -53,6 +64,8 @@ interface Vocabulary {
   langUse: string
   langExp: string
   wordCount: number
+  establisher: string
+  createdAt: string
 }
 
 interface Word {
@@ -69,7 +82,14 @@ export default function TestPage() {
   const { data: session } = useSession()
   const [loading, setLoading] = useState(true)
   const [vocabularies, setVocabularies] = useState<Vocabulary[]>([])
-  const [filteredVocabularies, setFilteredVocabularies] = useState<Vocabulary[]>([])
+  const [browseLoading, setBrowseLoading] = useState(false)
+  const [browsePage, setBrowsePage] = useState(0)
+  const [browseTotal, setBrowseTotal] = useState(0)
+  const [browseFilters, setBrowseFilters] = useState({
+    name: '',
+    langUse: [] as string[],
+    langExp: [] as string[],
+  })
   
   const [stage, setStage] = useState<TestStage>('setup')
   const [selectedLangUse, setSelectedLangUse] = useState('')
@@ -97,29 +117,9 @@ export default function TestPage() {
       router.push('/login')
       return
     }
-    loadVocabularies()
+    fetchBrowseVocabularies(0)
     setLoading(false)
   }, [router, session])
-
-  useEffect(() => {
-    if (selectedLangUse && selectedLangExp) {
-      const filtered = vocabularies.filter(
-        vocab => vocab.langUse === selectedLangUse && vocab.langExp === selectedLangExp
-      )
-      setFilteredVocabularies(filtered)
-      if (filtered.length === 0) {
-        setSelectedVocabId('')
-        setSelectedVocab(null)
-      } else if (!filtered.find(v => v.vocabularyId === selectedVocabId)) {
-        setSelectedVocabId('')
-        setSelectedVocab(null)
-      }
-    } else {
-      setFilteredVocabularies([])
-      setSelectedVocabId('')
-      setSelectedVocab(null)
-    }
-  }, [selectedLangUse, selectedLangExp, vocabularies, selectedVocabId])
 
   // 載入點數資訊
   useEffect(() => {
@@ -139,19 +139,42 @@ export default function TestPage() {
     }
   }, [stage])
 
-  const loadVocabularies = async () => {
+  const fetchBrowseVocabularies = async (pageNum: number = 0) => {
     try {
-      const response = await fetch('/api/student/vocabularies')
+      setBrowseLoading(true)
+      const params = new URLSearchParams()
+      params.append('page', pageNum.toString())
+      params.append('limit', '10')
+      
+      if (browseFilters.name) {
+        params.append('name', browseFilters.name)
+      }
+      browseFilters.langUse.forEach((lang) => {
+        params.append('langUse', lang)
+      })
+      browseFilters.langExp.forEach((lang) => {
+        params.append('langExp', lang)
+      })
+
+      const response = await fetch(`/api/student/vocabularies/browse?${params.toString()}`)
       if (response.ok) {
         const data = await response.json()
         setVocabularies(data.vocabularies || [])
+        setBrowseTotal(data.total || 0)
+        setBrowsePage(pageNum)
       }
     } catch (error) {
-      console.error('載入單字本失敗:', error)
+      console.error('Error browsing vocabularies:', error)
+    } finally {
+      setBrowseLoading(false)
     }
   }
 
-  const handleVocabChange = async (vocabId: string) => {
+  const handleBrowseSearch = () => {
+    fetchBrowseVocabularies(0)
+  }
+
+  const handleVocabSelect = async (vocabId: string) => {
     setSelectedVocabId(vocabId)
     try {
       const response = await fetch(`/api/student/vocabularies/${vocabId}`)
@@ -166,8 +189,12 @@ export default function TestPage() {
             ...vocab,
             words: wordsData.words || [],
           })
+          setSelectedLangUse(vocab.langUse)
+          setSelectedLangExp(vocab.langExp)
         } else {
           setSelectedVocab(vocab)
+          setSelectedLangUse(vocab.langUse)
+          setSelectedLangExp(vocab.langExp)
         }
       }
     } catch (error) {
@@ -400,102 +427,166 @@ export default function TestPage() {
   if (stage === 'setup') {
     return (
       <Box>
-          <Box sx={{ mt: 4 }}>
-            <Paper sx={{ p: 4 }}>
-              <Typography variant="h5" gutterBottom>
-                設定測驗
-              </Typography>
+        <Typography variant="h4" sx={{ mb: 3 }}>
+          單字測驗
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          選擇單字本開始測驗
+        </Typography>
 
-              <FormControl fullWidth sx={{ mt: 2, mb: 2 }}>
-                <InputLabel>背誦語言</InputLabel>
-                <Select
-                  value={selectedLangUse}
-                  onChange={(e) => setSelectedLangUse(e.target.value)}
-                  label="背誦語言"
-                >
-                  {LANGUAGE_OPTIONS.map((lang) => (
-                    <MenuItem key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>解釋語言</InputLabel>
-                <Select
-                  value={selectedLangExp}
-                  onChange={(e) => setSelectedLangExp(e.target.value)}
-                  label="解釋語言"
-                >
-                  {LANGUAGE_OPTIONS.map((lang) => (
-                    <MenuItem key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>選擇單字本</InputLabel>
-                <Select
-                  value={selectedVocabId}
-                  onChange={(e) => handleVocabChange(e.target.value)}
-                  label="選擇單字本"
-                  disabled={!selectedLangUse || !selectedLangExp}
-                >
-                  {filteredVocabularies.length > 0 ? (
-                    filteredVocabularies.map((vocab) => (
-                      <MenuItem key={vocab.vocabularyId} value={vocab.vocabularyId}>
-                        {vocab.name} ({getLanguageLabel(vocab.langUse)} - {getLanguageLabel(vocab.langExp)})
-                      </MenuItem>
-                    ))
-                  ) : (
-                    <MenuItem disabled>
-                      {selectedLangUse && selectedLangExp ? '沒有符合的單字本' : '請先選擇語言'}
-                    </MenuItem>
-                  )}
-                </Select>
-              </FormControl>
-
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} md={4}>
               <TextField
+                label="名稱"
+                value={browseFilters.name}
+                onChange={(e) =>
+                  setBrowseFilters({ ...browseFilters, name: e.target.value })
+                }
                 fullWidth
-                type="number"
-                label="題目數量"
-                value={questionCount}
-                onChange={(e) => setQuestionCount(Math.max(1, parseInt(e.target.value) || 1))}
-                inputProps={{ min: 1, max: selectedVocab?.words?.length || 1 }}
-                disabled={!selectedVocab}
-                sx={{ mb: 2 }}
-                helperText={selectedVocab ? `最多可選擇 ${selectedVocab.words?.length || 0} 題` : '請先選擇單字本'}
               />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <LanguageSelect
+                value={browseFilters.langUse}
+                onChange={(value) =>
+                  setBrowseFilters({ ...browseFilters, langUse: value as string[] })
+                }
+                label="背誦語言"
+                multiple
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <LanguageSelect
+                value={browseFilters.langExp}
+                onChange={(value) =>
+                  setBrowseFilters({ ...browseFilters, langExp: value as string[] })
+                }
+                label="解釋語言"
+                multiple
+              />
+            </Grid>
+          </Grid>
+          <Button
+            variant="contained"
+            startIcon={<SearchIcon />}
+            onClick={handleBrowseSearch}
+          >
+            搜尋
+          </Button>
+        </Paper>
 
-              <FormControl component="fieldset" sx={{ mb: 2 }}>
-                <FormLabel component="legend">題目類型</FormLabel>
-                <RadioGroup
-                  value={questionType}
-                  onChange={(e) => setQuestionType(parseInt(e.target.value) as QuestionType)}
-                >
-                  <FormControlLabel value={0} control={<Radio />} label="看句子選意思" />
-                  <FormControlLabel value={1} control={<Radio />} label="看意思選句子" />
-                  <FormControlLabel value={2} control={<Radio />} label="看句子選單字" />
-                  <FormControlLabel value={3} control={<Radio />} label="聽句子選意思" />
-                  <FormControlLabel value={4} control={<Radio />} label="聽句子選單字" />
-                  <FormControlLabel value={5} control={<Radio />} label="混合選項" />
-                </RadioGroup>
-              </FormControl>
-
-              <Button
-                variant="contained"
-                fullWidth
-                size="large"
-                onClick={handleStartTest}
-                disabled={!selectedVocab || !selectedLangUse || !selectedLangExp || questionCount < 1}
-              >
-                開始測驗
-              </Button>
-            </Paper>
+        {browseLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
           </Box>
+        ) : (
+          <>
+            <TableContainer component={Paper} sx={{ mb: 3 }}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>名稱</TableCell>
+                    <TableCell>背誦語言</TableCell>
+                    <TableCell>解釋語言</TableCell>
+                    <TableCell>單字數</TableCell>
+                    <TableCell>建立者</TableCell>
+                    <TableCell align="right">操作</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {vocabularies.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        沒有找到符合條件的單字本
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    vocabularies.map((vocabulary) => (
+                      <TableRow key={vocabulary.vocabularyId}>
+                        <TableCell>{vocabulary.name}</TableCell>
+                        <TableCell>
+                          {LANGUAGE_OPTIONS.find((opt) => opt.value === vocabulary.langUse)?.label || vocabulary.langUse}
+                        </TableCell>
+                        <TableCell>
+                          {LANGUAGE_OPTIONS.find((opt) => opt.value === vocabulary.langExp)?.label || vocabulary.langExp}
+                        </TableCell>
+                        <TableCell>{vocabulary.wordCount}</TableCell>
+                        <TableCell>{vocabulary.establisher}</TableCell>
+                        <TableCell align="right">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleVocabSelect(vocabulary.vocabularyId)}
+                            color="primary"
+                            title="選擇此單字本"
+                          >
+                            <VisibilityIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              component="div"
+              count={browseTotal}
+              page={browsePage}
+              onPageChange={(e, newPage) => fetchBrowseVocabularies(newPage)}
+              rowsPerPage={10}
+              rowsPerPageOptions={[10]}
+            />
+          </>
+        )}
+
+        {selectedVocab && (
+          <Paper sx={{ p: 4, mt: 3 }}>
+            <Typography variant="h5" gutterBottom>
+              設定測驗
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              已選擇單字本：{selectedVocab.name}
+            </Typography>
+
+            <TextField
+              fullWidth
+              type="number"
+              label="題目數量"
+              value={questionCount}
+              onChange={(e) => setQuestionCount(Math.max(1, parseInt(e.target.value) || 1))}
+              inputProps={{ min: 1, max: selectedVocab?.words?.length || 1 }}
+              disabled={!selectedVocab}
+              sx={{ mb: 2 }}
+              helperText={selectedVocab ? `最多可選擇 ${selectedVocab.words?.length || 0} 題` : '請先選擇單字本'}
+            />
+
+            <FormControl component="fieldset" sx={{ mb: 2 }}>
+              <FormLabel component="legend">題目類型</FormLabel>
+              <RadioGroup
+                value={questionType}
+                onChange={(e) => setQuestionType(parseInt(e.target.value) as QuestionType)}
+              >
+                <FormControlLabel value={0} control={<Radio />} label="看句子選意思" />
+                <FormControlLabel value={1} control={<Radio />} label="看意思選句子" />
+                <FormControlLabel value={2} control={<Radio />} label="看句子選單字" />
+                <FormControlLabel value={3} control={<Radio />} label="聽句子選意思" />
+                <FormControlLabel value={4} control={<Radio />} label="聽句子選單字" />
+                <FormControlLabel value={5} control={<Radio />} label="混合選項" />
+              </RadioGroup>
+            </FormControl>
+
+            <Button
+              variant="contained"
+              fullWidth
+              size="large"
+              onClick={handleStartTest}
+              disabled={!selectedVocab || !selectedLangUse || !selectedLangExp || questionCount < 1}
+            >
+              開始測驗
+            </Button>
+          </Paper>
+        )}
       </Box>
     )
   }

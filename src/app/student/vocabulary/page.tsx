@@ -47,6 +47,7 @@ interface Vocabulary {
   establisher: string;
   wordCount: number;
   createdAt: string;
+  public?: boolean; // 是否公開
   isInMyList?: boolean; // 用於 browse 頁面，標記是否已在列表中
 }
 
@@ -83,6 +84,7 @@ export default function StudentVocabularyPage() {
     langUse: "",
     langExp: "",
     copyrights: "",
+    public: true,
   });
 
   // Browse 相關狀態
@@ -161,6 +163,7 @@ export default function StudentVocabularyPage() {
       langUse: vocabulary.langUse,
       langExp: vocabulary.langExp,
       copyrights: vocabulary.copyrights || "",
+      public: vocabulary.public !== undefined ? vocabulary.public : true,
     });
     setOpenEditDialog(true);
   };
@@ -349,6 +352,7 @@ export default function StudentVocabularyPage() {
 
       if (response.ok) {
         const data = await response.json();
+        // 立即關閉對話框並刷新列表
         setOpenGenerateDialog(false);
         setGenerateFormData({
           name: "",
@@ -358,7 +362,7 @@ export default function StudentVocabularyPage() {
           level: "初級",
         });
         fetchMyVocabularies();
-        alert(`成功生成單字本「${data.vocabulary.name}」，包含 ${data.vocabulary.wordCount} 個單字！`);
+        // 不顯示 alert，讓用戶在列表中看到單字本（正在生成中）
       } else {
         const data = await response.json();
         setError(data.error || "生成單字本失敗");
@@ -480,7 +484,18 @@ export default function StudentVocabularyPage() {
                         <TableCell>
                           {LANGUAGE_OPTIONS.find((opt) => opt.value === vocabulary.langExp)?.label || vocabulary.langExp}
                         </TableCell>
-                        <TableCell>{vocabulary.wordCount}</TableCell>
+                        <TableCell>
+                          {vocabulary.wordCount === 0 && vocabulary.copyrights === "由 AI 生成" ? (
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <CircularProgress size={16} />
+                              <Typography variant="body2" color="text.secondary">
+                                正在生成中
+                              </Typography>
+                            </Box>
+                          ) : (
+                            vocabulary.wordCount
+                          )}
+                        </TableCell>
                         <TableCell>
                           {new Date(vocabulary.createdAt).toLocaleDateString()}
                         </TableCell>
@@ -559,12 +574,29 @@ export default function StudentVocabularyPage() {
               <Typography><strong>解釋語言:</strong> {LANGUAGE_OPTIONS.find((opt) => opt.value === selectedVocabulary.langExp)?.label || selectedVocabulary.langExp}</Typography>
               <Typography><strong>版權:</strong> {selectedVocabulary.copyrights || "-"}</Typography>
               <Typography><strong>建立者:</strong> {selectedVocabulary.establisher}</Typography>
-              <Typography><strong>單字數:</strong> {wordsTotal > 0 ? wordsTotal : selectedVocabulary.wordCount}</Typography>
+              <Typography><strong>單字數:</strong> {
+                wordsTotal > 0 ? wordsTotal : 
+                selectedVocabulary.wordCount === 0 && selectedVocabulary.copyrights === "由 AI 生成" ? (
+                  <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
+                    <CircularProgress size={16} />
+                    <span>正在生成中</span>
+                  </Box>
+                ) : selectedVocabulary.wordCount
+              }</Typography>
               
               <Box sx={{ mt: 3 }}>
-                {isOwner(selectedVocabulary) && (
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="h6">單字列表</Typography>
+                {wordsTotal === 0 && selectedVocabulary.copyrights === "由 AI 生成" ? (
+                  <Box sx={{ textAlign: "center", py: 4 }}>
+                    <CircularProgress />
+                    <Typography variant="body1" sx={{ mt: 2 }}>
+                      AI 正在生成單字，請稍候...
+                    </Typography>
+                  </Box>
+                ) : (
+                  <>
+                    {isOwner(selectedVocabulary) && (
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                        <Typography variant="h6">單字列表</Typography>
                     <Button
                       variant="contained"
                       startIcon={<SaveIcon />}
@@ -682,6 +714,8 @@ export default function StudentVocabularyPage() {
                     />
                   </>
                 )}
+                  </>
+                )}
               </Box>
             </Box>
           )}
@@ -734,6 +768,28 @@ export default function StudentVocabularyPage() {
               onChange={(e) => setFormData({ ...formData, copyrights: e.target.value })}
               fullWidth
             />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography>公開設定：</Typography>
+              <Button
+                variant={formData.public ? "contained" : "outlined"}
+                color={formData.public ? "success" : "inherit"}
+                onClick={() => setFormData({ ...formData, public: true })}
+                size="small"
+              >
+                公開
+              </Button>
+              <Button
+                variant={!formData.public ? "contained" : "outlined"}
+                color={!formData.public ? "error" : "inherit"}
+                onClick={() => setFormData({ ...formData, public: false })}
+                size="small"
+              >
+                不公開
+              </Button>
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              公開：其他人可以在瀏覽單字本時看到此單字本
+            </Typography>
           </Box>
         </DialogContent>
         <DialogActions>

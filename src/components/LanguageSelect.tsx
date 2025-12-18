@@ -14,6 +14,7 @@ export const LANGUAGE_OPTIONS = [
   { value: "Japanese", label: "日文" },
   { value: "English", label: "英文" },
   { value: "Traditional Chinese", label: "繁體中文" },
+  { value: "Korean", label: "韓文" },
 ];
 
 export function getLanguageLabel(langCode: string): string {

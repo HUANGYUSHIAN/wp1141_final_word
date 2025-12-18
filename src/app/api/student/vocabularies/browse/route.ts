@@ -39,6 +39,8 @@ export async function GET(request: NextRequest) {
       establisher: {
         not: session.userId,
       },
+      // 只顯示公開的單字本
+      public: true,
     };
 
     // Name 過濾（部分匹配）
@@ -88,6 +90,7 @@ export async function GET(request: NextRequest) {
           copyrights: v.copyrights,
           establisher: v.establisher,
           wordCount: wordCount,
+          public: v.public !== undefined ? v.public : true,
           createdAt: typeof v.createdAt === "string" ? v.createdAt : v.createdAt.toISOString(),
           isInMyList: lvocabuIDs.includes(v.vocabularyId), // 標記是否已在列表中
         };
