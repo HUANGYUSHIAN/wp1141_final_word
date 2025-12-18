@@ -39,24 +39,46 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const vocabularies = await prisma.vocabulary.findMany({
-      where: {
-        vocabularyId: {
-          in: lvocabuIDs,
-        },
+    // 構建過濾條件
+    const name = searchParams.get("name");
+    const langUseParams = searchParams.getAll("langUse");
+    const langExpParams = searchParams.getAll("langExp");
+
+    const where: any = {
+      vocabularyId: {
+        in: lvocabuIDs,
       },
+    };
+
+    // Name 過濾（部分匹配）
+    if (name) {
+      where.name = {
+        contains: name,
+      };
+    }
+
+    // LangUse 過濾（支援多選）
+    if (langUseParams.length > 0) {
+      where.langUse = {
+        in: langUseParams,
+      };
+    }
+
+    // LangExp 過濾（支援多選）
+    if (langExpParams.length > 0) {
+      where.langExp = {
+        in: langExpParams,
+      };
+    }
+
+    const vocabularies = await prisma.vocabulary.findMany({
+      where,
       skip,
       take: limit,
       orderBy: { createdAt: "desc" },
     });
 
-    const total = await prisma.vocabulary.count({
-      where: {
-        vocabularyId: {
-          in: lvocabuIDs,
-        },
-      },
-    });
+    const total = await prisma.vocabulary.count({ where });
 
     // 直接使用 word.count 獲取每個單字本的單字數（更可靠）
     const useLocalDb = process.env.DATABASE_local === "true";

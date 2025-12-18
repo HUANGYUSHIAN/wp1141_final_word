@@ -49,23 +49,23 @@ export async function POST(request: Request) {
         where: { userId: session.userId },
         update: {}, // 如果已存在，不更新
         create: {
-          userId: session.userId,
-          lvocabuIDs: [],
-          lcouponIDs: [],
-          lfriendIDs: [],
-        },
-      });
+            userId: session.userId,
+            lvocabuIDs: [],
+            lcouponIDs: [],
+            lfriendIDs: [],
+          },
+        });
     } else if (role === "Supplier") {
       // 使用 upsert 確保不會重複創建
       await prisma.supplier.upsert({
         where: { userId: session.userId },
         update: {}, // 如果已存在，不更新
         create: {
-          userId: session.userId,
-          lsuppcoIDs: [],
-        },
-      });
-    }
+            userId: session.userId,
+            lsuppcoIDs: [],
+          },
+        });
+      }
 
     // 重新查詢用戶資料以確認更新成功
     const updatedUser = await prisma.user.findUnique({

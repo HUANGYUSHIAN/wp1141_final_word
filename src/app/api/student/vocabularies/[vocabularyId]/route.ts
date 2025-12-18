@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { addToPublicVocabularyList, removeFromPublicVocabularyList } from "@/lib/publicVocabularyList";
 
 // GET - 獲取單字本詳情
 export async function GET(
@@ -83,6 +84,9 @@ export async function PUT(
       return NextResponse.json({ error: "無權限修改此單字本" }, { status: 403 });
     }
 
+    const newPublicStatus = isPublic !== undefined ? isPublic : true;
+    const oldPublicStatus = vocabulary.public !== undefined ? vocabulary.public : true;
+
     // 更新單字本
     const updated = await prisma.vocabulary.update({
       where: { vocabularyId },
@@ -91,9 +95,20 @@ export async function PUT(
         langUse,
         langExp,
         copyrights: copyrights || null,
-        public: isPublic !== undefined ? isPublic : true,
+        public: newPublicStatus,
       },
     });
+
+    // 同步更新 public_Vocabulary 列表
+    if (oldPublicStatus !== newPublicStatus) {
+      if (newPublicStatus) {
+        // 從 private 改成 public，加入列表
+        await addToPublicVocabularyList(vocabularyId);
+      } else {
+        // 從 public 改成 private，從列表移除
+        await removeFromPublicVocabularyList(vocabularyId);
+      }
+    }
 
     return NextResponse.json({ vocabulary: updated });
   } catch (error: any) {
@@ -153,6 +168,11 @@ export async function DELETE(
     });
 
     await Promise.all(updatePromises);
+
+    // 如果單字本是公開的，從 public_Vocabulary 列表中移除
+    if (vocabulary.public) {
+      await removeFromPublicVocabularyList(vocabularyId);
+    }
 
     // 刪除單字本（會自動刪除相關的 words，因為有 onDelete: Cascade）
     await prisma.vocabulary.delete({

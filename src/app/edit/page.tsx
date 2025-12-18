@@ -43,7 +43,7 @@ function EditContent() {
       // 延迟一下，避免在 session 建立过程中的临时状态误判
       const timer = setTimeout(() => {
         if (status === "unauthenticated") {
-          router.push("/login");
+      router.push("/login");
         }
       }, 500);
       return () => clearTimeout(timer);

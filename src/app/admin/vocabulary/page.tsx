@@ -39,6 +39,7 @@ interface Vocabulary {
   copyrights: string | null;
   establisher: string;
   wordCount: number;
+  public?: boolean;
   createdAt: string;
 }
 
@@ -65,6 +66,7 @@ export default function AdminVocabularyPage() {
     langExp: "",
     copyrights: "",
     establisher: "",
+    public: true,
   });
 
   useEffect(() => {
@@ -168,6 +170,7 @@ export default function AdminVocabularyPage() {
       langExp: vocabulary.langExp,
       copyrights: vocabulary.copyrights || "",
       establisher: vocabulary.establisher,
+      public: vocabulary.public !== undefined ? vocabulary.public : true,
     });
     setOpenDialog(true);
   };
@@ -222,6 +225,7 @@ export default function AdminVocabularyPage() {
       langExp: "",
       copyrights: "",
       establisher: "",
+      public: true,
     });
     setOpenDialog(true);
   };
@@ -521,6 +525,28 @@ export default function AdminVocabularyPage() {
               fullWidth
               required
             />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography>公開設定：</Typography>
+              <Button
+                variant={formData.public ? "contained" : "outlined"}
+                color={formData.public ? "success" : "inherit"}
+                onClick={() => setFormData({ ...formData, public: true })}
+                size="small"
+              >
+                公開
+              </Button>
+              <Button
+                variant={!formData.public ? "contained" : "outlined"}
+                color={!formData.public ? "error" : "inherit"}
+                onClick={() => setFormData({ ...formData, public: false })}
+                size="small"
+              >
+                不公開
+              </Button>
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              公開：其他人可以在瀏覽單字本時看到此單字本
+            </Typography>
           </Box>
         </DialogContent>
         <DialogActions>

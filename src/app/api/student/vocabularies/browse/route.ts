@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getPublicVocabularyIds } from "@/lib/publicVocabularyList";
 
 // GET - 瀏覽所有單字本，支援過濾
 export async function GET(request: NextRequest) {
@@ -33,15 +34,35 @@ export async function GET(request: NextRequest) {
 
     const lvocabuIDs = user.studentData.lvocabuIDs || [];
 
+    // 獲取所有公開單字本的 ID 列表
+    const publicVocabularyIds = await getPublicVocabularyIds();
+
+    if (publicVocabularyIds.length === 0) {
+      return NextResponse.json({
+        vocabularies: [],
+        total: 0,
+        page,
+        limit,
+      });
+    }
+
     // 構建過濾條件
+    // 使用 public_Vocabulary 列表來查詢
     const where: any = {
-      // 排除自己建立的單字本
-      establisher: {
-        not: session.userId,
+      vocabularyId: {
+        in: publicVocabularyIds,
       },
-      // 只顯示公開的單字本
-      public: true,
     };
+
+    // 只有在有設定 filter 時才排除自己建立的單字本
+    // 這樣可以讓用戶看到自己建立的公開單字本
+    const hasFilter = name || langUseParams.length > 0 || langExpParams.length > 0;
+    if (hasFilter) {
+      // 排除自己建立的單字本（因為在瀏覽時，自己的單字本應該在"我的單字本"中）
+      where.establisher = {
+        not: session.userId,
+      };
+    }
 
     // Name 過濾（部分匹配）
     if (name) {

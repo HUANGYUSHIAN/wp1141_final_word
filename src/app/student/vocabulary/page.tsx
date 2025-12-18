@@ -246,15 +246,20 @@ export default function StudentVocabularyPage() {
       params.append("page", pageNum.toString());
       params.append("limit", "10");
       
+      // 只有在有設定 filter 時才加入參數
       if (browseFilters.name) {
         params.append("name", browseFilters.name);
       }
-      browseFilters.langUse.forEach((lang) => {
-        params.append("langUse", lang);
-      });
-      browseFilters.langExp.forEach((lang) => {
-        params.append("langExp", lang);
-      });
+      if (browseFilters.langUse.length > 0) {
+        browseFilters.langUse.forEach((lang) => {
+          params.append("langUse", lang);
+        });
+      }
+      if (browseFilters.langExp.length > 0) {
+        browseFilters.langExp.forEach((lang) => {
+          params.append("langExp", lang);
+        });
+      }
 
       const response = await fetch(`/api/student/vocabularies/browse?${params.toString()}`);
       if (response.ok) {

@@ -60,7 +60,7 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
       // 延迟检查，避免在 session 建立过程中的临时状态误判
       const timer = setTimeout(() => {
         if (status === "unauthenticated") {
-          router.push("/login");
+      router.push("/login");
         }
       }, 1000);
       return () => clearTimeout(timer);
@@ -82,12 +82,12 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
       let userData = null;
       
       while (retries > 0) {
-        const response = await fetch("/api/user");
+      const response = await fetch("/api/user");
         
-        if (response.ok) {
+      if (response.ok) {
           userData = await response.json();
-          if (userData.dataType === "Supplier") {
-            setIsSupplier(true);
+        if (userData.dataType === "Supplier") {
+          setIsSupplier(true);
             setLoading(false);
             // 清除 URL 参数
             if (fromRoleSelection && typeof window !== "undefined") {
@@ -96,36 +96,36 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
             return;
           } else if (userData.dataType) {
             // 如果是其他角色，重定向到首页
-            router.push("/");
+          router.push("/");
             setLoading(false);
             return;
           }
           // 如果 dataType 为 null，等待一下再重试
           if (retries > 1) {
             await new Promise(resolve => setTimeout(resolve, fromRoleSelection ? 300 : 500));
-          }
-        } else {
-          // 檢查是否需要清除 session
-          const data = await response.json().catch(() => ({}));
-          
-          // 只有在明確標記 clearSession: true 且是 404（找不到用戶）時才清除 session
-          // 401（未登入）和 403（帳號鎖定）也需要清除
-          // 但 503（服務不可用）和 500（伺服器錯誤）不應該清除 session
-          if (data.clearSession && (response.status === 401 || response.status === 404 || response.status === 403)) {
-            // 確認資料庫中真的沒有用戶，才清除 session
-            console.log("Clearing session due to:", response.status, data);
-            await signOut({ callbackUrl: "/login", redirect: true });
+        }
+      } else {
+        // 檢查是否需要清除 session
+        const data = await response.json().catch(() => ({}));
+        
+        // 只有在明確標記 clearSession: true 且是 404（找不到用戶）時才清除 session
+        // 401（未登入）和 403（帳號鎖定）也需要清除
+        // 但 503（服務不可用）和 500（伺服器錯誤）不應該清除 session
+        if (data.clearSession && (response.status === 401 || response.status === 404 || response.status === 403)) {
+          // 確認資料庫中真的沒有用戶，才清除 session
+          console.log("Clearing session due to:", response.status, data);
+          await signOut({ callbackUrl: "/login", redirect: true });
             setLoading(false);
-            return;
-          }
-          
-          // 如果是暫時的錯誤（503），不應該清除 session
-          if (response.status === 503) {
-            console.warn("Database temporarily unavailable, keeping session");
+          return;
+        }
+        
+        // 如果是暫時的錯誤（503），不應該清除 session
+        if (response.status === 503) {
+          console.warn("Database temporarily unavailable, keeping session");
             setLoading(false);
-            return;
-          }
-          
+          return;
+        }
+        
           // 其他錯誤，等待後重試
           if (retries > 1) {
             await new Promise(resolve => setTimeout(resolve, 500));

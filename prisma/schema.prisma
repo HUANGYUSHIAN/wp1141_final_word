@@ -165,3 +165,11 @@ model FeedbackForm {
   @@map("feedback_forms")
 }
 
+model PublicVocabularyList {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  vocabularyIds   String[] @default([]) // 所有公開單字本的 vocabularyId 列表
+  updatedAt       DateTime @updatedAt
+
+  @@map("public_vocabulary_list")
+}
+

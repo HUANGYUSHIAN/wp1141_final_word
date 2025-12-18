@@ -27,7 +27,19 @@ export async function PUT(
 
     const { vocabularyId } = await params;
     const body = await request.json();
-    const { name, langUse, langExp, copyrights, establisher } = body;
+    const { name, langUse, langExp, copyrights, establisher, public: isPublic } = body;
+
+    // 獲取當前單字本狀態
+    const currentVocabulary = await prisma.vocabulary.findUnique({
+      where: { vocabularyId },
+    });
+
+    if (!currentVocabulary) {
+      return NextResponse.json({ error: "找不到單字本" }, { status: 404 });
+    }
+
+    const oldPublicStatus = currentVocabulary.public !== undefined ? currentVocabulary.public : true;
+    const newPublicStatus = isPublic !== undefined ? isPublic : true;
 
     const vocabulary = await prisma.vocabulary.update({
       where: { vocabularyId },
@@ -37,8 +49,19 @@ export async function PUT(
         langExp,
         copyrights: copyrights || null,
         establisher,
+        public: newPublicStatus,
       },
     });
+
+    // 同步更新 public_Vocabulary 列表
+    if (oldPublicStatus !== newPublicStatus) {
+      const { addToPublicVocabularyList, removeFromPublicVocabularyList } = await import("@/lib/publicVocabularyList");
+      if (newPublicStatus) {
+        await addToPublicVocabularyList(vocabularyId);
+      } else {
+        await removeFromPublicVocabularyList(vocabularyId);
+      }
+    }
 
     return NextResponse.json({ vocabulary });
   } catch (error: any) {

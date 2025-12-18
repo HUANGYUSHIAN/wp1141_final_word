@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 import { updateLLMQuota } from "@/lib/llmQuota";
+import { addToPublicVocabularyList } from "@/lib/publicVocabularyList";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -179,6 +180,9 @@ export async function POST(req: NextRequest) {
         data: { userId: session.userId, lvocabuIDs: [vocabulary.vocabularyId] },
       });
     }
+
+    // 因為預設為公開，加入 public_Vocabulary 列表
+    await addToPublicVocabularyList(vocabulary.vocabularyId);
 
     // 在後台異步生成單字（不等待完成）
     generateWordsAsync(vocabulary.id, vocabularyId, topic, langUse, langExp, level, session.userId).catch(
