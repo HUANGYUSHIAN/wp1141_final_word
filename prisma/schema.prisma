@@ -44,6 +44,7 @@ model Student {
   paraGame    String?  // game parameter (JSON string)
   payments    String?  // 付款資料 (JSON string)
   lfriendIDs  String[] @default([]) // friend ID list
+  chathistory String?  // 聊天紀錄 (JSON string: Chat[])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -171,5 +172,14 @@ model PublicVocabularyList {
   updatedAt       DateTime @updatedAt
 
   @@map("public_vocabulary_list")
+}
+
+model Sys_para {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  LLM_quota   Int      @default(100000) // 每日 LLM 額度
+  new_points  Int      @default(100) // 初始使用者的兌換卷點數
+  updatedAt   DateTime @updatedAt
+
+  @@map("sys_para")
 }
 

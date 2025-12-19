@@ -5,6 +5,7 @@ import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 import { updateLLMQuota } from "@/lib/llmQuota";
 import { addToPublicVocabularyList } from "@/lib/publicVocabularyList";
+import { checkLLMQuotaExceeded } from "@/lib/checkLLMQuota";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

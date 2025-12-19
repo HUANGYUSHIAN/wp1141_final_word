@@ -419,6 +419,15 @@ export default function StudentVocabularyPage() {
         <Box sx={{ display: "flex", gap: 2 }}>
           <Button
             variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              alert("建立單字本功能開發中");
+            }}
+          >
+            建立單字本
+          </Button>
+          <Button
+            variant="outlined"
             startIcon={<AutoAwesomeIcon />}
             onClick={() => setOpenGenerateDialog(true)}
           >

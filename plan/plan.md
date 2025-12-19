@@ -19,6 +19,7 @@ Student
 |── Para_game   // (game parameter)遊戲所需的參數(如生命值、攻擊力等等)，視為未知datastructure
 |── Payments    // 存放付款資料(如信用卡資料)，視為未知datastructure
 |── LfriendIDs  // (friend ID list)
+|── chathistory // 一個list用於儲存Chat以紀錄對話，將完整對話(時間戳、文字內容)持久化儲存
 
 Supplier          // 提供優惠券的廠商
 |── LsuppcoIDs  // (supply coupon ID list)存放題該廠商所提供優惠券ID的list

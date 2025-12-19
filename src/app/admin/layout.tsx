@@ -17,7 +17,10 @@ import {
   ListItemText,
   Button,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import HomeIcon from "@mui/icons-material/Home";
 import PeopleIcon from "@mui/icons-material/People";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
@@ -28,6 +31,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import { signOut } from "next-auth/react";
 
 const drawerWidth = 240;
+const collapsedWidth = 80;
 
 const menuItems = [
   { text: "用戶管理", icon: <PeopleIcon />, path: "/admin/user" },
@@ -44,6 +48,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -151,15 +156,25 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       <Drawer
         variant="permanent"
         sx={{
-          width: drawerWidth,
+          width: { xs: collapsedWidth, sm: collapsed ? collapsedWidth : drawerWidth },
           flexShrink: 0,
           "& .MuiDrawer-paper": {
-            width: drawerWidth,
+            width: { xs: collapsedWidth, sm: collapsed ? collapsedWidth : drawerWidth },
             boxSizing: "border-box",
+            transition: "width 0.3s ease",
           },
         }}
       >
-        <Toolbar />
+        <Toolbar sx={{ display: "flex", justifyContent: collapsed ? "center" : "space-between" }}>
+          {!collapsed && (
+            <Typography variant="h6" noWrap>
+              管理後台
+            </Typography>
+          )}
+          <IconButton onClick={() => setCollapsed(!collapsed)}>
+            {collapsed ? <MenuIcon /> : <ChevronLeftIcon />}
+          </IconButton>
+        </Toolbar>
         <Box sx={{ overflow: "auto" }}>
           <List>
             {menuItems.map((item) => (
@@ -167,9 +182,21 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 <ListItemButton
                   selected={pathname === item.path}
                   onClick={() => router.push(item.path)}
+                  sx={{
+                    justifyContent: collapsed ? "center" : "flex-start",
+                    px: collapsed ? 2 : 3,
+                  }}
                 >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.text} />
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: collapsed ? 0 : 3,
+                      justifyContent: "center",
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  {!collapsed && <ListItemText primary={item.text} />}
                 </ListItemButton>
               </ListItem>
             ))}
@@ -181,7 +208,10 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          width: {
+            sm: `calc(100% - ${collapsed ? collapsedWidth : drawerWidth}px)`,
+          },
+          transition: "width 0.3s ease",
         }}
       >
         <Toolbar />

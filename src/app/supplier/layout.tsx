@@ -16,7 +16,10 @@ import {
   ListItemText,
   Button,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import HomeIcon from "@mui/icons-material/Home";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import StoreIcon from "@mui/icons-material/Store";
@@ -26,6 +29,7 @@ import { signOut } from "next-auth/react";
 import AIAssistant from "@/components/AIAssistant";
 
 const drawerWidth = 240;
+const collapsedWidth = 80;
 
 const menuItems = [
   { text: "設定", icon: <SettingsIcon />, path: "/supplier/setting" },
@@ -40,6 +44,7 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [isSupplier, setIsSupplier] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -229,17 +234,27 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
       <Drawer
         variant="permanent"
         sx={{
-          width: drawerWidth,
+          width: { xs: collapsedWidth, sm: collapsed ? collapsedWidth : drawerWidth },
           flexShrink: 0,
           "& .MuiDrawer-paper": {
-            width: drawerWidth,
+            width: { xs: collapsedWidth, sm: collapsed ? collapsedWidth : drawerWidth },
             boxSizing: "border-box",
             display: "flex",
             flexDirection: "column",
+            transition: "width 0.3s ease",
           },
         }}
       >
-        <Toolbar />
+        <Toolbar sx={{ display: "flex", justifyContent: collapsed ? "center" : "space-between" }}>
+          {!collapsed && (
+            <Typography variant="h6" noWrap>
+              廠商專區
+            </Typography>
+          )}
+          <IconButton onClick={() => setCollapsed(!collapsed)}>
+            {collapsed ? <MenuIcon /> : <ChevronLeftIcon />}
+          </IconButton>
+        </Toolbar>
         <Box sx={{ overflow: "auto", flex: 1 }}>
           <List>
             {menuItems.map((item) => (
@@ -247,9 +262,21 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
                 <ListItemButton
                   selected={pathname === item.path}
                   onClick={() => router.push(item.path)}
+                  sx={{
+                    justifyContent: collapsed ? "center" : "flex-start",
+                    px: collapsed ? 2 : 3,
+                  }}
                 >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.text} />
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: collapsed ? 0 : 3,
+                      justifyContent: "center",
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  {!collapsed && <ListItemText primary={item.text} />}
                 </ListItemButton>
               </ListItem>
             ))}
@@ -273,7 +300,10 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          width: {
+            sm: `calc(100% - ${collapsed ? collapsedWidth : drawerWidth}px)`,
+          },
+          transition: "width 0.3s ease",
         }}
       >
         <Toolbar />
