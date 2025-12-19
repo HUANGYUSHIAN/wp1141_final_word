@@ -31,6 +31,7 @@ interface Chat {
   timestamp: number;
   content: string;
   direction: "user" | "ai";
+  quickReplies?: string[]; // Quick Replies 選項
 }
 
 export default function GrammarPage() {
@@ -44,13 +45,22 @@ export default function GrammarPage() {
   const [toolboxOpen, setToolboxOpen] = useState(false);
   const [grammarLang, setGrammarLang] = useState<"English" | "Japanese">("English");
   const [responseLang, setResponseLang] = useState<"Traditional Chinese" | "Japanese" | "English" | "Korean">("Traditional Chinese");
+  // 程度設定：English 用 CEFR (A1-A2-B1-B2-C1-C2)，Japanese 用 JLPT (N5-N4-N3-N2-N1)
+  const [level, setLevel] = useState<string>("A1"); // default 最低階
+  const [mode, setMode] = useState<"ask" | "recommend">("ask"); // 詢問或推薦模式
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (session?.userId) {
       loadChatHistory();
     }
-  }, [session]);
+    // 當 grammarLang 改變時，重置 level 為最低階
+    if (grammarLang === "English") {
+      setLevel("A1");
+    } else {
+      setLevel("N5");
+    }
+  }, [session, grammarLang]);
 
   useEffect(() => {
     // 自動滾動到底部
@@ -61,27 +71,39 @@ export default function GrammarPage() {
 
   const loadChatHistory = async () => {
     try {
+      setLoading(true);
       const response = await fetch("/api/student/grammar/history");
       if (response.ok) {
         const data = await response.json();
         setChats(data.chats || []);
+      } else {
+        // 如果 API 调用失败，不显示错误，只使用空数组
+        console.warn("載入聊天紀錄失敗，使用空紀錄");
+        setChats([]);
       }
     } catch (error) {
-      console.error("載入聊天紀錄失敗:", error);
+      // 网络错误或数据库连接错误时，不阻塞页面，使用空数组
+      console.warn("載入聊天紀錄失敗:", error);
+      setChats([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || sending) return;
+  const handleSend = async (messageText?: string, modeType?: "ask" | "recommend") => {
+    const message = messageText || input.trim();
+    if (!message || sending) return;
 
     const userMessage: Chat = {
       timestamp: Date.now(),
-      content: input.trim(),
+      content: message,
       direction: "user",
     };
 
     setChats((prev) => [...prev, userMessage]);
-    setInput("");
+    if (!messageText) {
+      setInput("");
+    }
     setSending(true);
 
     try {
@@ -94,6 +116,12 @@ export default function GrammarPage() {
           message: userMessage.content,
           grammarLang,
           responseLang,
+          level,
+          mode: modeType || mode,
+          chatHistory: chats.map((c) => ({
+            role: c.direction === "user" ? "user" : "assistant",
+            content: c.content,
+          })),
         }),
       });
 
@@ -103,12 +131,14 @@ export default function GrammarPage() {
           timestamp: Date.now(),
           content: data.response || "grammar功能開發中",
           direction: "ai",
+          quickReplies: data.quickReplies || [],
         };
         setChats((prev) => [...prev, aiMessage]);
       } else {
+        const errorData = await response.json();
         const aiMessage: Chat = {
           timestamp: Date.now(),
-          content: "grammar功能開發中",
+          content: errorData.error || "grammar功能開發中",
           direction: "ai",
         };
         setChats((prev) => [...prev, aiMessage]);
@@ -117,13 +147,20 @@ export default function GrammarPage() {
       console.error("發送訊息失敗:", error);
       const aiMessage: Chat = {
         timestamp: Date.now(),
-        content: "grammar功能開發中",
+        content: "發送訊息失敗，請稍後再試",
         direction: "ai",
       };
       setChats((prev) => [...prev, aiMessage]);
     } finally {
       setSending(false);
     }
+  };
+
+  const handleRecommend = () => {
+    const recommendMessage = grammarLang === "English" 
+      ? "我不知道今天要學什麼英文文法"
+      : "私は今日何の日本語文法を学べばいいか分かりません";
+    handleSend(recommendMessage, "recommend");
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -298,7 +335,31 @@ export default function GrammarPage() {
                           {new Date(chat.timestamp).toLocaleString()}
                         </Typography>
                       </Box>
-                      <Typography variant="body1">{chat.content}</Typography>
+                      <Typography 
+                        variant="body1" 
+                        sx={{ 
+                          whiteSpace: "pre-wrap",
+                          "& ol, & ul": { pl: 2 },
+                          "& li": { mb: 0.5 }
+                        }}
+                      >
+                        {chat.content}
+                      </Typography>
+                      {chat.direction === "ai" && chat.quickReplies && chat.quickReplies.length > 0 && (
+                        <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
+                          {chat.quickReplies.map((reply, idx) => (
+                            <Button
+                              key={idx}
+                              variant="outlined"
+                              size="small"
+                              onClick={() => handleSend(reply, "ask")}
+                              disabled={sending}
+                            >
+                              {reply}
+                            </Button>
+                          ))}
+                        </Box>
+                      )}
                     </Box>
                   </Box>
                 </Paper>
@@ -325,27 +386,60 @@ export default function GrammarPage() {
             borderTop: 1,
             borderColor: "divider",
             display: "flex",
+            flexDirection: "column",
             gap: 1,
           }}
         >
-          <TextField
-            fullWidth
-            multiline
-            maxRows={4}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="輸入訊息..."
-            disabled={sending}
-          />
-          <Button
-            variant="contained"
-            endIcon={<SendIcon />}
-            onClick={handleSend}
-            disabled={!input.trim() || sending}
-          >
-            發送
-          </Button>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              variant={mode === "ask" ? "contained" : "outlined"}
+              onClick={() => setMode("ask")}
+              disabled={sending}
+              sx={{ flex: 1 }}
+            >
+              詢問
+            </Button>
+            <Button
+              variant={mode === "recommend" ? "contained" : "outlined"}
+              onClick={() => setMode("recommend")}
+              disabled={sending}
+              sx={{ flex: 1 }}
+            >
+              推薦
+            </Button>
+          </Box>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <TextField
+              fullWidth
+              multiline
+              maxRows={4}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={mode === "ask" ? "輸入文法問題..." : "點擊推薦按鈕或輸入問題..."}
+              disabled={sending || mode === "recommend"}
+            />
+            <Button
+              variant="contained"
+              endIcon={<SendIcon />}
+              onClick={() => mode === "recommend" ? handleRecommend() : handleSend()}
+              disabled={(!input.trim() && mode === "ask") || sending}
+            >
+              {mode === "recommend" ? "推薦" : "發送"}
+            </Button>
+          </Box>
+          {mode === "recommend" && (
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={handleRecommend}
+              disabled={sending}
+            >
+              {grammarLang === "English" 
+                ? "我不知道今天要學什麼英文文法"
+                : "私は今日何の日本語文法を学べばいいか分かりません"}
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -401,6 +495,45 @@ export default function GrammarPage() {
                 <MenuItem value="Japanese">日文</MenuItem>
                 <MenuItem value="English">English</MenuItem>
                 <MenuItem value="Korean">韓文</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth disabled={grammarLang !== "English"}>
+              <InputLabel id="english-level-label">英文程度</InputLabel>
+              <Select
+                labelId="english-level-label"
+                value={grammarLang === "English" ? level : ""}
+                label="英文程度"
+                onChange={(e) => {
+                  if (grammarLang === "English") {
+                    setLevel(e.target.value);
+                  }
+                }}
+              >
+                <MenuItem value="A1">A1 (初級)</MenuItem>
+                <MenuItem value="A2">A2 (初級)</MenuItem>
+                <MenuItem value="B1">B1 (中級)</MenuItem>
+                <MenuItem value="B2">B2 (中級)</MenuItem>
+                <MenuItem value="C1">C1 (高級)</MenuItem>
+                <MenuItem value="C2">C2 (高級)</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth disabled={grammarLang !== "Japanese"}>
+              <InputLabel id="japanese-level-label">日文程度</InputLabel>
+              <Select
+                labelId="japanese-level-label"
+                value={grammarLang === "Japanese" ? level : ""}
+                label="日文程度"
+                onChange={(e) => {
+                  if (grammarLang === "Japanese") {
+                    setLevel(e.target.value);
+                  }
+                }}
+              >
+                <MenuItem value="N5">N5 (初級)</MenuItem>
+                <MenuItem value="N4">N4 (初級)</MenuItem>
+                <MenuItem value="N3">N3 (中級)</MenuItem>
+                <MenuItem value="N2">N2 (中級)</MenuItem>
+                <MenuItem value="N1">N1 (高級)</MenuItem>
               </Select>
             </FormControl>
           </Box>

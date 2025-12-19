@@ -103,6 +103,21 @@ export async function GET(request: NextRequest) {
         const wordCount = await prisma.word.count({
           where: { vocabularyId: vocabId },
         });
+        
+        // 根據 establisher (userId) 查詢作者名稱
+        let establisherName = "未知";
+        try {
+          const establisherUser = await prisma.user.findUnique({
+            where: { userId: v.establisher },
+            select: { name: true },
+          });
+          if (establisherUser && establisherUser.name) {
+            establisherName = establisherUser.name;
+          }
+        } catch (error) {
+          console.error("Error fetching establisher name:", error);
+        }
+        
         return {
           vocabularyId: v.vocabularyId,
           name: v.name,
@@ -110,6 +125,7 @@ export async function GET(request: NextRequest) {
           langExp: v.langExp,
           copyrights: v.copyrights,
           establisher: v.establisher,
+          establisherName: establisherName,
           wordCount: wordCount,
           public: v.public !== undefined ? v.public : true,
           createdAt: typeof v.createdAt === "string" ? v.createdAt : v.createdAt.toISOString(),

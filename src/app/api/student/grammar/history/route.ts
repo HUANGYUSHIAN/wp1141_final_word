@@ -11,29 +11,37 @@ export async function GET() {
       return NextResponse.json({ error: "未登入" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { userId: session.userId },
-      include: { studentData: true },
-    });
+    try {
+      const user = await prisma.user.findUnique({
+        where: { userId: session.userId },
+        include: { studentData: true },
+      });
 
-    if (!user || user.dataType !== "Student" || !user.studentData) {
-      return NextResponse.json({ error: "無權限" }, { status: 403 });
-    }
-
-    let chats: any[] = [];
-    if (user.studentData.chathistory) {
-      try {
-        chats = JSON.parse(user.studentData.chathistory);
-      } catch (e) {
-        console.error("Error parsing chathistory JSON:", e);
-        chats = [];
+      if (!user || user.dataType !== "Student" || !user.studentData) {
+        // 如果不是 Student 或没有 studentData，返回空数组而不是错误
+        return NextResponse.json({ chats: [] });
       }
-    }
 
-    return NextResponse.json({ chats });
+      let chats: any[] = [];
+      if (user.studentData.chathistory) {
+        try {
+          chats = JSON.parse(user.studentData.chathistory);
+        } catch (e) {
+          console.error("Error parsing chathistory JSON:", e);
+          chats = [];
+        }
+      }
+
+      return NextResponse.json({ chats });
+    } catch (dbError: any) {
+      // 数据库连接错误时，返回空数组而不是错误，避免阻塞前端
+      console.error("Database error fetching chat history:", dbError);
+      return NextResponse.json({ chats: [] });
+    }
   } catch (error: any) {
     console.error("Error fetching chat history:", error);
-    return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
+    // 任何其他错误也返回空数组，避免阻塞前端
+    return NextResponse.json({ chats: [] });
   }
 }
 

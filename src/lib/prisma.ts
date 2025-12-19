@@ -262,11 +262,49 @@ if (useLocalDb) {
     );
   }
 
+  // 添加詳細的連接追蹤
+  const dbUrl = process.env.DATABASE_URL || "";
+  const dbUrlInfo = dbUrl ? {
+    hasUrl: true,
+    protocol: dbUrl.split("://")[0] || "unknown",
+    host: dbUrl.match(/@([^/]+)/)?.[1] || "unknown",
+    database: dbUrl.match(/\/([^?]+)/)?.[1] || "unknown",
+    hasTimeoutParams: dbUrl.includes("serverSelectionTimeoutMS") || dbUrl.includes("socketTimeoutMS"),
+  } : { hasUrl: false };
+
+  console.log("[Prisma] MongoDB 連接配置:", {
+    environment: process.env.NODE_ENV,
+    useLocalDb: false,
+    ...dbUrlInfo,
+    timestamp: new Date().toISOString(),
+  });
+
   prismaInstance =
     globalThis.prisma ??
     new PrismaClient({
-      log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+      log: process.env.NODE_ENV === "development" ? ["error", "warn", "query"] : ["error"],
     });
+
+  // 測試連接（僅在開發環境，異步執行不阻塞）
+  if (process.env.NODE_ENV === "development") {
+    // 異步測試連接，不阻塞啟動
+    setImmediate(() => {
+      prismaInstance.$connect()
+        .then(() => {
+          console.log("[Prisma] ✅ MongoDB 連接測試成功", {
+            timestamp: new Date().toISOString(),
+          });
+        })
+        .catch((error: any) => {
+          console.error("[Prisma] ❌ MongoDB 連接測試失敗:", {
+            error: error.message,
+            code: error.code,
+            name: error.name,
+            timestamp: new Date().toISOString(),
+          });
+        });
+    });
+  }
 
   if (process.env.NODE_ENV !== "production") {
     globalThis.prisma = prismaInstance;

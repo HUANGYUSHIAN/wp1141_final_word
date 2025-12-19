@@ -81,10 +81,43 @@ export const authOptions: NextAuthOptions = {
       const name = user.name || undefined;
       const image = user.image || undefined;
 
+      // 添加環境追蹤
+      const envInfo = {
+        useLocalDb: process.env.DATABASE_local === "true",
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        nodeEnv: process.env.NODE_ENV,
+        timestamp: new Date().toISOString(),
+      };
+      console.log("[SignIn] 環境資訊:", envInfo);
+
       // 查找是否已存在該 Google ID 的用戶
-      let dbUser = await prisma.user.findUnique({
-        where: { googleId },
-      });
+      let dbUser;
+      const queryStartTime = Date.now();
+      try {
+        console.log("[SignIn] 開始查詢用戶 - googleId:", googleId, "時間:", new Date().toISOString());
+        dbUser = await prisma.user.findUnique({
+          where: { googleId },
+        });
+        const queryDuration = Date.now() - queryStartTime;
+        console.log("[SignIn] 查詢完成 - 耗時:", queryDuration, "ms", "結果:", dbUser ? "找到用戶" : "未找到用戶");
+      } catch (dbError: any) {
+        const queryDuration = Date.now() - queryStartTime;
+        console.error("[SignIn] ❌ 資料庫錯誤 - 查詢用戶失敗:", {
+          error: {
+            message: dbError.message,
+            code: dbError.code,
+            name: dbError.name,
+            meta: dbError.meta,
+          },
+          queryDuration: queryDuration,
+          googleId: googleId,
+          environment: envInfo,
+          timestamp: new Date().toISOString(),
+          stack: dbError.stack?.split("\n").slice(0, 5).join("\n"),
+        });
+        // 数据库连接失败时，返回 false 阻止登录，避免创建不完整的数据
+        throw new Error("資料庫連接失敗，請稍後再試");
+      }
 
       console.log("[SignIn] Database lookup result:", dbUser ? "Found existing user" : "New user", dbUser ? { userId: dbUser.userId } : null);
 
@@ -99,11 +132,30 @@ export const authOptions: NextAuthOptions = {
 
         while (!isUnique && attempts < maxAttempts) {
           userId = generateUserId(30);
-          const existingUser = await prisma.user.findUnique({
-            where: { userId },
-          });
-          if (!existingUser) {
-            isUnique = true;
+          try {
+            const checkStartTime = Date.now();
+            const existingUser = await prisma.user.findUnique({
+              where: { userId },
+            });
+            const checkDuration = Date.now() - checkStartTime;
+            if (!existingUser) {
+              isUnique = true;
+            }
+            if (checkDuration > 1000) {
+              console.warn("[SignIn] userId 唯一性檢查耗時較長:", checkDuration, "ms", "attempt:", attempts + 1);
+            }
+          } catch (dbError: any) {
+            console.error("[SignIn] ❌ 資料庫錯誤 - 檢查 userId 唯一性失敗:", {
+              error: {
+                message: dbError.message,
+                code: dbError.code,
+                name: dbError.name,
+              },
+              userId: userId,
+              attempt: attempts + 1,
+              timestamp: new Date().toISOString(),
+            });
+            throw new Error("資料庫連接失敗，請稍後再試");
           }
           attempts++;
         }
@@ -123,9 +175,28 @@ export const authOptions: NextAuthOptions = {
         };
 
         console.log("[SignIn] Creating new user with data:", userData);
-        dbUser = await prisma.user.create({
-          data: userData,
-        });
+        const createStartTime = Date.now();
+        try {
+          dbUser = await prisma.user.create({
+            data: userData,
+          });
+          const createDuration = Date.now() - createStartTime;
+          console.log("[SignIn] ✅ 用戶創建成功 - 耗時:", createDuration, "ms");
+        } catch (dbError: any) {
+          const createDuration = Date.now() - createStartTime;
+          console.error("[SignIn] ❌ 資料庫錯誤 - 創建用戶失敗:", {
+            error: {
+              message: dbError.message,
+              code: dbError.code,
+              name: dbError.name,
+              meta: dbError.meta,
+            },
+            createDuration: createDuration,
+            userData: { ...userData, email: email?.substring(0, 10) + "..." },
+            timestamp: new Date().toISOString(),
+          });
+          throw new Error("資料庫連接失敗，無法創建用戶，請稍後再試");
+        }
 
         console.log("[SignIn] Created new user:", { userId: dbUser.userId, dbUserKeys: Object.keys(dbUser) });
 
@@ -140,17 +211,38 @@ export const authOptions: NextAuthOptions = {
         (user as any).isNewUser = true;
       } else {
         // 已存在用戶：更新信息
-        dbUser = await prisma.user.update({
-          where: { googleId },
-          data: {
-            email,
-            name,
-            image,
-          },
-        });
-        console.log("[SignIn] Updated existing user:", { userId: dbUser.userId });
-        finalUserId = dbUser.userId;
-        isCurrentUserNew = false;
+        const updateStartTime = Date.now();
+        try {
+          dbUser = await prisma.user.update({
+            where: { googleId },
+            data: {
+              email,
+              name,
+              image,
+            },
+          });
+          const updateDuration = Date.now() - updateStartTime;
+          console.log("[SignIn] ✅ 用戶更新成功 - 耗時:", updateDuration, "ms", { userId: dbUser.userId });
+          finalUserId = dbUser.userId;
+          isCurrentUserNew = false;
+        } catch (dbError: any) {
+          const updateDuration = Date.now() - updateStartTime;
+          console.error("[SignIn] ❌ 資料庫錯誤 - 更新用戶失敗:", {
+            error: {
+              message: dbError.message,
+              code: dbError.code,
+              name: dbError.name,
+              meta: dbError.meta,
+            },
+            updateDuration: updateDuration,
+            googleId: googleId,
+            timestamp: new Date().toISOString(),
+          });
+          // 如果更新失败，使用现有数据继续登录流程
+          finalUserId = dbUser.userId;
+          isCurrentUserNew = false;
+          console.warn("[SignIn] ⚠️ 使用現有用戶數據繼續登入流程（更新失敗）");
+        }
       }
 
       // 關鍵：設置 user.id 為 userId，JWT callback 會使用這個

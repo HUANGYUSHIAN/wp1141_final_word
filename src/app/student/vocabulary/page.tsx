@@ -45,6 +45,7 @@ interface Vocabulary {
   langExp: string;
   copyrights: string | null;
   establisher: string;
+  establisherName?: string; // 作者名稱（從 DB 查詢）
   wordCount: number;
   createdAt: string;
   public?: boolean; // 是否公開
@@ -765,7 +766,7 @@ export default function StudentVocabularyPage() {
               <Typography><strong>背誦語言:</strong> {LANGUAGE_OPTIONS.find((opt) => opt.value === selectedVocabulary.langUse)?.label || selectedVocabulary.langUse}</Typography>
               <Typography><strong>解釋語言:</strong> {LANGUAGE_OPTIONS.find((opt) => opt.value === selectedVocabulary.langExp)?.label || selectedVocabulary.langExp}</Typography>
               <Typography><strong>版權:</strong> {selectedVocabulary.copyrights || "-"}</Typography>
-              <Typography><strong>建立者:</strong> {selectedVocabulary.establisher}</Typography>
+              <Typography><strong>建立者:</strong> {selectedVocabulary.establisherName || selectedVocabulary.establisher || "未知"}</Typography>
               <Typography><strong>單字數:</strong> {
                 wordsTotal > 0 ? wordsTotal : 
                 selectedVocabulary.wordCount === 0 && selectedVocabulary.copyrights === "由 AI 生成" ? (
@@ -1077,7 +1078,7 @@ export default function StudentVocabularyPage() {
                               {LANGUAGE_OPTIONS.find((opt) => opt.value === vocabulary.langExp)?.label || vocabulary.langExp}
                             </TableCell>
                             <TableCell>{vocabulary.wordCount}</TableCell>
-                            <TableCell>{vocabulary.establisher}</TableCell>
+                            <TableCell>{vocabulary.establisherName || vocabulary.establisher || "未知"}</TableCell>
                             <TableCell align="right">
                               <IconButton
                                 size="small"
