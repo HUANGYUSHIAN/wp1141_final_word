@@ -2,15 +2,15 @@ import { prisma } from "@/lib/prisma";
 
 interface QuotaRecord {
   date: string; // YYYY-MM-DD
-  tokens: number;
+  cost: number; // 美金成本
 }
 
 /**
- * 更新用户的 LLM API token 使用量
+ * 更新用户的 LLM API 美金使用量
  * @param userId 用户 ID
- * @param tokens 本次使用的 token 数量
+ * @param cost 本次使用的美金成本
  */
-export async function updateLLMQuota(userId: string, tokens: number) {
+export async function updateLLMQuota(userId: string, cost: number) {
   try {
     const user = await prisma.user.findUnique({
       where: { userId },
@@ -38,10 +38,10 @@ export async function updateLLMQuota(userId: string, tokens: number) {
 
     if (todayRecordIndex >= 0) {
       // 更新今天的记录
-      quotaRecords[todayRecordIndex].tokens += tokens;
+      quotaRecords[todayRecordIndex].cost += cost;
     } else {
       // 添加新记录
-      quotaRecords.push({ date: today, tokens });
+      quotaRecords.push({ date: today, cost });
     }
 
     // 只保留最近 30 天的记录
@@ -67,13 +67,13 @@ export async function updateLLMQuota(userId: string, tokens: number) {
 }
 
 /**
- * 获取用户的 LLM API token 使用量
+ * 获取用户的 LLM API 美金使用量
  * @param userId 用户 ID
- * @returns 今日使用量和总使用量
+ * @returns 今日使用量和总使用量（美金）
  */
 export async function getLLMQuota(userId: string): Promise<{
-  todayTokens: number;
-  totalTokens: number;
+  todayCost: number;
+  totalCost: number;
   records: QuotaRecord[];
 }> {
   try {
@@ -82,24 +82,24 @@ export async function getLLMQuota(userId: string): Promise<{
     });
 
     if (!user || !user.llmQuota) {
-      return { todayTokens: 0, totalTokens: 0, records: [] };
+      return { todayCost: 0, totalCost: 0, records: [] };
     }
 
     const quotaRecords: QuotaRecord[] = JSON.parse(user.llmQuota);
     const today = new Date().toISOString().split("T")[0];
 
     const todayRecord = quotaRecords.find((r) => r.date === today);
-    const todayTokens = todayRecord ? todayRecord.tokens : 0;
-    const totalTokens = quotaRecords.reduce((sum, r) => sum + r.tokens, 0);
+    const todayCost = todayRecord ? todayRecord.cost : 0;
+    const totalCost = quotaRecords.reduce((sum, r) => sum + r.cost, 0);
 
     return {
-      todayTokens,
-      totalTokens,
+      todayCost,
+      totalCost,
       records: quotaRecords,
     };
   } catch (error) {
     console.error("Error getting LLM quota:", error);
-    return { todayTokens: 0, totalTokens: 0, records: [] };
+    return { todayCost: 0, totalCost: 0, records: [] };
   }
 }
 

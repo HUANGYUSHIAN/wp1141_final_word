@@ -28,7 +28,7 @@ export async function GET() {
     if (!sysPara) {
       sysPara = await prisma.sys_para.create({
         data: {
-          LLM_quota: 100000,
+          LLM_quota: 0.005, // 預設 0.005 美金
           new_points: 100,
         },
       });
@@ -79,8 +79,8 @@ export async function PUT(request: NextRequest) {
     if (!sysPara) {
       sysPara = await prisma.sys_para.create({
         data: {
-          LLM_quota: LLM_quota,
-          new_points: new_points,
+          LLM_quota: LLM_quota || 0.005,
+          new_points: new_points || 100,
         },
       });
     } else {

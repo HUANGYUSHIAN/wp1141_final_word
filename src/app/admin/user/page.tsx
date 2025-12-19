@@ -284,15 +284,15 @@ export default function AdminUserPage() {
                   <TableCell>
                     {(() => {
                       try {
-                        if (!user.llmQuota) return "0";
+                        if (!user.llmQuota) return "$0.000";
                         const quota = JSON.parse(user.llmQuota);
                         const today = new Date().toISOString().split("T")[0];
                         const todayRecord = quota.find((r: any) => r.date === today);
-                        const todayTokens = todayRecord ? todayRecord.tokens : 0;
-                        const totalTokens = quota.reduce((sum: number, r: any) => sum + (r.tokens || 0), 0);
-                        return `今日: ${todayTokens.toLocaleString()} / 總計: ${totalTokens.toLocaleString()}`;
+                        const todayCost = todayRecord ? todayRecord.cost : 0;
+                        const totalCost = quota.reduce((sum: number, r: any) => sum + (r.cost || 0), 0);
+                        return `今日: $${todayCost.toFixed(4)} / 總計: $${totalCost.toFixed(4)}`;
                       } catch {
-                        return "0";
+                        return "$0.000";
                       }
                     })()}
                   </TableCell>
@@ -361,7 +361,7 @@ export default function AdminUserPage() {
               <Typography><strong>狀態:</strong> {selectedUser.isLock ? "已鎖定" : "正常"}</Typography>
               <Typography><strong>建立時間:</strong> {new Date(selectedUser.createdAt).toLocaleString()}</Typography>
               <Box sx={{ mt: 2 }}>
-                <Typography><strong>LLM API Token 使用額度:</strong></Typography>
+                <Typography><strong>LLM API 使用額度（美金）:</strong></Typography>
                 {(() => {
                   try {
                     if (!selectedUser.llmQuota) {
@@ -370,12 +370,12 @@ export default function AdminUserPage() {
                     const quota = JSON.parse(selectedUser.llmQuota);
                     const today = new Date().toISOString().split("T")[0];
                     const todayRecord = quota.find((r: any) => r.date === today);
-                    const todayTokens = todayRecord ? todayRecord.tokens : 0;
-                    const totalTokens = quota.reduce((sum: number, r: any) => sum + (r.tokens || 0), 0);
+                    const todayCost = todayRecord ? todayRecord.cost : 0;
+                    const totalCost = quota.reduce((sum: number, r: any) => sum + (r.cost || 0), 0);
                     return (
                       <Box sx={{ mt: 1 }}>
-                        <Typography variant="body2">今日使用: {todayTokens.toLocaleString()} tokens</Typography>
-                        <Typography variant="body2">總計使用: {totalTokens.toLocaleString()} tokens</Typography>
+                        <Typography variant="body2">今日使用: ${todayCost.toFixed(4)}</Typography>
+                        <Typography variant="body2">總計使用: ${totalCost.toFixed(4)}</Typography>
                         {quota.length > 0 && (
                           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
                             記錄期間: {quota[0].date} ~ {quota[quota.length - 1].date}

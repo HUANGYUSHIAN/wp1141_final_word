@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 
 export default function AdminSettingPage() {
   const [settings, setSettings] = useState({
-    LLM_quota: 100000,
+    LLM_quota: 0.005,
     new_points: 100,
   });
   const [saved, setSaved] = useState(false);
@@ -22,7 +22,7 @@ export default function AdminSettingPage() {
       if (response.ok) {
         const data = await response.json();
         setSettings({
-          LLM_quota: data.LLM_quota || 100000,
+          LLM_quota: data.LLM_quota || 0.005,
           new_points: data.new_points || 100,
         });
       }
@@ -95,16 +95,17 @@ export default function AdminSettingPage() {
             </Typography>
             <TextField
               type="number"
-              label="每日 LLM 額度"
+              label="每日 LLM 額度（美金）"
               value={settings.LLM_quota}
               onChange={(e) =>
                 setSettings({
                   ...settings,
-                  LLM_quota: parseInt(e.target.value) || 0,
+                  LLM_quota: parseFloat(e.target.value) || 0,
                 })
               }
               fullWidth
-              helperText="超過此額度時，禁止學生使用 AI 生成單字本、AI 助手等功能"
+              inputProps={{ step: 0.001, min: 0 }}
+              helperText="超過此額度時，禁止學生使用 AI 生成單字本、AI 助手等功能（單位：美金）"
             />
           </Box>
 

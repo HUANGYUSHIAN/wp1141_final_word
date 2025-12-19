@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { updateLLMQuota } from "@/lib/llmQuota";
 import { addToPublicVocabularyList } from "@/lib/publicVocabularyList";
 import { checkLLMQuotaExceeded } from "@/lib/checkLLMQuota";
+import { calculateCostFromUsage } from "@/lib/llmCost";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -73,11 +74,11 @@ async function generateWordsAsync(
         response_format: { type: "json_object" },
       });
 
-      // 記錄 token 使用量
+      // 記錄 token 使用量並計算成本
       const usage = completion.usage;
       if (usage) {
-        const tokens = usage.total_tokens || 0;
-        totalTokensUsed += tokens;
+        const cost = calculateCostFromUsage(usage);
+        totalTokensUsed += cost;
       }
 
       const responseText = completion.choices[0]?.message?.content || "{}";
@@ -88,7 +89,7 @@ async function generateWordsAsync(
       attempt += 1;
     }
 
-    // 更新用戶的 LLM Quota
+    // 更新用戶的 LLM Quota（美金）
     if (totalTokensUsed > 0) {
       await updateLLMQuota(userId, totalTokensUsed);
     }

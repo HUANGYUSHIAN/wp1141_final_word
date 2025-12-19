@@ -51,6 +51,14 @@ interface Vocabulary {
   isInMyList?: boolean; // 用於 browse 頁面，標記是否已在列表中
 }
 
+interface Word {
+  word: string;
+  spelling: string | null;
+  explanation: string;
+  partOfSpeech: string | null;
+  sentence: string;
+}
+
 export default function StudentVocabularyPage() {
   const { data: session } = useSession();
   const [myVocabularies, setMyVocabularies] = useState<Vocabulary[]>([]);
@@ -62,6 +70,7 @@ export default function StudentVocabularyPage() {
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openBrowseDialog, setOpenBrowseDialog] = useState(false);
   const [openGenerateDialog, setOpenGenerateDialog] = useState(false);
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generateFormData, setGenerateFormData] = useState({
     name: "",
@@ -97,6 +106,18 @@ export default function StudentVocabularyPage() {
     langUse: [] as string[],
     langExp: [] as string[],
   });
+
+  // 建立單字本相關狀態
+  const [createLangUse, setCreateLangUse] = useState("");
+  const [createLangExp, setCreateLangExp] = useState("");
+  const [langsSet, setLangsSet] = useState(false);
+  const [searchWord, setSearchWord] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [createVocabularyName, setCreateVocabularyName] = useState("");
+  const [createPublic, setCreatePublic] = useState(true);
+  const [createWords, setCreateWords] = useState<Word[]>([]);
+  const [savingVocabulary, setSavingVocabulary] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   useEffect(() => {
     fetchMyVocabularies();
@@ -166,6 +187,155 @@ export default function StudentVocabularyPage() {
       public: vocabulary.public !== undefined ? vocabulary.public : true,
     });
     setOpenEditDialog(true);
+  };
+
+  const handleSearchWord = async () => {
+    if (!searchWord.trim() || !createLangUse || !createLangExp) return;
+
+    setSearching(true);
+    setCreateError("");
+
+    try {
+      const response = await fetch("/api/student/vocabularies/search-word", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          word: searchWord.trim(),
+          langUse: createLangUse,
+          langExp: createLangExp,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.words && data.words.length > 0) {
+          // 檢查是否超過 30 個單字
+          if (createWords.length + data.words.length > 30) {
+            setCreateError(`單字本最多只能有 30 個單字，目前已有 ${createWords.length} 個，此次搜尋找到 ${data.words.length} 個單字`);
+          } else {
+            // 過濾重複的單字（根據 word 和 explanation 組合）
+            const newWords = data.words.filter((newWord: Word) => {
+              return !createWords.some(
+                (existingWord) =>
+                  existingWord.word === newWord.word &&
+                  existingWord.explanation === newWord.explanation
+              );
+            });
+            setCreateWords([...createWords, ...newWords]);
+            setSearchWord("");
+            if (newWords.length < data.words.length) {
+              setCreateError(`已過濾 ${data.words.length - newWords.length} 個重複單字`);
+            }
+          }
+        } else {
+          setCreateError("未找到有效的單字，請檢查輸入");
+        }
+      } else {
+        const data = await response.json();
+        setCreateError(data.error || "搜尋單字失敗");
+      }
+    } catch (error) {
+      console.error("Error searching word:", error);
+      setCreateError("搜尋單字失敗，請稍後再試");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSaveCreateVocabulary = async () => {
+    if (!createVocabularyName.trim()) {
+      setCreateError("請輸入單字本名稱");
+      return;
+    }
+
+    if (createWords.length === 0) {
+      setCreateError("單字本至少需要一個單字");
+      return;
+    }
+
+    if (createWords.length > 30) {
+      setCreateError("單字本最多只能有 30 個單字");
+      return;
+    }
+
+    // 驗證所有單字格式
+    const errors: string[] = [];
+    createWords.forEach((word, index) => {
+      // 必填欄位檢查
+      if (!word.word || word.word.trim() === "") {
+        errors.push(`第 ${index + 1} 個單字：Word.word 不能為空`);
+      }
+      if (!word.explanation || word.explanation.trim() === "") {
+        errors.push(`第 ${index + 1} 個單字：Word.explanation 不能為空`);
+      }
+      if (!word.sentence || word.sentence.trim() === "") {
+        errors.push(`第 ${index + 1} 個單字：Word.sentence 不能為空`);
+      }
+
+      // Sentence 格式檢查
+      if (word.sentence && !word.sentence.includes("<" + word.word + "<")) {
+        errors.push(`第 ${index + 1} 個單字：Word.sentence 必須包含 <${word.word}< 格式`);
+      }
+
+      // Spelling 規則檢查
+      if (createLangUse === "English") {
+        if (word.spelling !== null && word.spelling !== undefined) {
+          errors.push(`第 ${index + 1} 個單字：英文的 Word.spelling 必須為 null`);
+        }
+      } else {
+        if (!word.spelling || word.spelling.trim() === "") {
+          errors.push(`第 ${index + 1} 個單字：${createLangUse} 的 Word.spelling 不能為 null`);
+        }
+      }
+    });
+
+    if (errors.length > 0) {
+      setCreateError("驗證失敗：\n" + errors.join("\n"));
+      return;
+    }
+
+    setSavingVocabulary(true);
+    setCreateError("");
+
+    try {
+      const response = await fetch("/api/student/vocabularies", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: createVocabularyName.trim(),
+          langUse: createLangUse,
+          langExp: createLangExp,
+          public: createPublic,
+          words: createWords,
+        }),
+      });
+
+      if (response.ok) {
+        setOpenCreateDialog(false);
+        setCreateLangUse("");
+        setCreateLangExp("");
+        setLangsSet(false);
+        setSearchWord("");
+        setCreateVocabularyName("");
+        setCreatePublic(true);
+        setCreateWords([]);
+        setCreateError("");
+        fetchMyVocabularies();
+        alert("單字本建立成功！");
+      } else {
+        const data = await response.json();
+        setCreateError(data.error || "儲存單字本失敗");
+      }
+    } catch (error) {
+      console.error("Error saving vocabulary:", error);
+      setCreateError("儲存單字本失敗，請稍後再試");
+    } finally {
+      setSavingVocabulary(false);
+    }
   };
 
   const handleSaveVocabulary = async () => {
@@ -421,7 +591,15 @@ export default function StudentVocabularyPage() {
             variant="outlined"
             startIcon={<AddIcon />}
             onClick={() => {
-              alert("建立單字本功能開發中");
+              setOpenCreateDialog(true);
+              setCreateLangUse("");
+              setCreateLangExp("");
+              setLangsSet(false);
+              setSearchWord("");
+              setCreateVocabularyName("");
+              setCreatePublic(true);
+              setCreateWords([]);
+              setCreateError("");
             }}
           >
             建立單字本
@@ -1082,6 +1260,180 @@ export default function StudentVocabularyPage() {
             startIcon={generating ? <CircularProgress size={20} /> : <AutoAwesomeIcon />}
           >
             {generating ? "生成中..." : "生成"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 建立單字本對話框 */}
+      <Dialog
+        open={openCreateDialog}
+        onClose={() => !savingVocabulary && setOpenCreateDialog(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>建立單字本</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+            {/* 1st row: LangUse, LangExp, 設定 btn */}
+            <Box sx={{ display: "flex", gap: 2, alignItems: "flex-end" }}>
+              <Box sx={{ flex: 1 }}>
+                <LanguageSelect
+                  value={createLangUse}
+                  onChange={(value) => setCreateLangUse(value as string)}
+                  label="背誦語言"
+                  required
+                  disabled={langsSet || savingVocabulary}
+                />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <LanguageSelect
+                  value={createLangExp}
+                  onChange={(value) => setCreateLangExp(value as string)}
+                  label="解釋語言"
+                  required
+                  disabled={langsSet || savingVocabulary}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  if (createLangUse && createLangExp) {
+                    setLangsSet(true);
+                  } else {
+                    setCreateError("請先選擇背誦語言和解釋語言");
+                  }
+                }}
+                disabled={langsSet || savingVocabulary || !createLangUse || !createLangExp}
+              >
+                設定
+              </Button>
+            </Box>
+
+            {/* 2nd row: 單字輸入框與搜尋 btn */}
+            {langsSet && (
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <TextField
+                  fullWidth
+                  label="輸入單字"
+                  value={searchWord}
+                  onChange={(e) => setSearchWord(e.target.value)}
+                  disabled={searching || savingVocabulary}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter" && !searching && searchWord.trim()) {
+                      handleSearchWord();
+                    }
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  startIcon={searching ? <CircularProgress size={20} /> : <SearchIcon />}
+                  onClick={handleSearchWord}
+                  disabled={!searchWord.trim() || searching || savingVocabulary}
+                >
+                  搜尋
+                </Button>
+              </Box>
+            )}
+
+            {/* 3rd row: 單字本名稱、是否 public、儲存 btn */}
+            {langsSet && (
+              <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+                <TextField
+                  label="單字本名稱"
+                  value={createVocabularyName}
+                  onChange={(e) => setCreateVocabularyName(e.target.value)}
+                  disabled={savingVocabulary}
+                  sx={{ flex: 1 }}
+                  required
+                />
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography>公開：</Typography>
+                  <Button
+                    variant={createPublic ? "contained" : "outlined"}
+                    color={createPublic ? "success" : "inherit"}
+                    onClick={() => setCreatePublic(true)}
+                    disabled={savingVocabulary}
+                    size="small"
+                  >
+                    是
+                  </Button>
+                  <Button
+                    variant={!createPublic ? "contained" : "outlined"}
+                    color={!createPublic ? "error" : "inherit"}
+                    onClick={() => setCreatePublic(false)}
+                    disabled={savingVocabulary}
+                    size="small"
+                  >
+                    否
+                  </Button>
+                </Box>
+                <Button
+                  variant="contained"
+                  startIcon={savingVocabulary ? <CircularProgress size={20} /> : <SaveIcon />}
+                  onClick={handleSaveCreateVocabulary}
+                  disabled={savingVocabulary || !createVocabularyName.trim() || createWords.length === 0}
+                >
+                  儲存
+                </Button>
+              </Box>
+            )}
+
+            {createError && (
+              <Alert severity="error" onClose={() => setCreateError("")}>
+                {createError}
+              </Alert>
+            )}
+
+            {/* 4th row: 單字本內容的 table */}
+            {langsSet && createWords.length > 0 && (
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Word</TableCell>
+                      <TableCell>Spelling</TableCell>
+                      <TableCell>Explanation</TableCell>
+                      <TableCell>PartOfSpeech</TableCell>
+                      <TableCell>Sentence</TableCell>
+                      <TableCell align="right">操作</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {createWords.map((word, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{word.word}</TableCell>
+                        <TableCell>{word.spelling || "-"}</TableCell>
+                        <TableCell>{word.explanation}</TableCell>
+                        <TableCell>{word.partOfSpeech || "-"}</TableCell>
+                        <TableCell>{word.sentence}</TableCell>
+                        <TableCell align="right">
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setCreateWords(createWords.filter((_, i) => i !== index));
+                            }}
+                            disabled={savingVocabulary}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+
+            {langsSet && createWords.length === 0 && (
+              <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 4 }}>
+                請搜尋單字以加入單字本
+              </Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCreateDialog(false)} disabled={savingVocabulary}>
+            取消
           </Button>
         </DialogActions>
       </Dialog>

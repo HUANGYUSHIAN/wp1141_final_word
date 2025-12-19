@@ -176,7 +176,7 @@ model PublicVocabularyList {
 
 model Sys_para {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  LLM_quota   Int      @default(100000) // 每日 LLM 額度
+  LLM_quota   Float    @default(0.005) // 每日 LLM 額度（美金）
   new_points  Int      @default(100) // 初始使用者的兌換卷點數
   updatedAt   DateTime @updatedAt
 
