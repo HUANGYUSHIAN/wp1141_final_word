@@ -590,9 +590,9 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
           borderRadius: 2,
           overflowY: "scroll", // 允許整個視窗垂直滾動
           overflowX: "hidden",
-          bgcolor: "background.paper",
+          bgcolor: "#2d2d2d", // 深色卡片背景
           border: "1px solid",
-          borderColor: "divider",
+          borderColor: "rgba(255, 255, 255, 0.1)",
           // 阻止視窗內事件冒泡到頁面
           pointerEvents: "auto",
           // 為整個視窗添加滾動條樣式
@@ -638,18 +638,18 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
           alignItems: "center",
           justifyContent: "space-between",
           p: 1.5,
-          bgcolor: "primary.main",
-          color: "white",
+          bgcolor: "#4255ff", // Quizlet 藍色
+          color: "#ffffff",
         }}
       >
-        <Typography variant="h6" sx={{ fontSize: "1rem", fontWeight: 600 }}>
+        <Typography variant="h6" sx={{ fontSize: "1rem", fontWeight: 600, color: "#ffffff" }}>
           AI 助手 {userRole === "Student" ? "（學生）" : userRole === "Supplier" ? "（廠商）" : ""}
         </Typography>
         <Box>
           <IconButton
             size="small"
             onClick={() => setMinimized(!minimized)}
-            sx={{ color: "white" }}
+            sx={{ color: "#ffffff" }}
           >
             {minimized ? <ExpandMoreIcon /> : <ExpandLessIcon />}
           </IconButton>
@@ -660,7 +660,7 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
               setMinimized(false);
               setCurrentHint(null);
             }}
-            sx={{ color: "white" }}
+            sx={{ color: "#ffffff" }}
           >
               <CloseIcon />
             </IconButton>
@@ -696,7 +696,7 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
               overflowY: "scroll", // 始終顯示滾動條
               overflowX: "hidden",
               p: 2,
-              bgcolor: "grey.50",
+              bgcolor: "#1e1e1e", // 深色背景
               minHeight: 0, // 重要：確保可以正確滾動
               maxHeight: "100%", // 確保不超過父容器
               // 使用 scrollbar-gutter 為滾動條預留空間（如果瀏覽器支援）
@@ -781,7 +781,7 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
           >
             {messages.length === 0 ? (
               <Box sx={{ textAlign: "center", mt: 4 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: "rgba(255, 255, 255, 0.7)" }}>
                   歡迎使用 AI 助手！我可以實際帶領您完成各種操作。
                 </Typography>
               </Box>
@@ -799,13 +799,14 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
                     sx={{
                       p: 1.5,
                       maxWidth: "80%",
-                      bgcolor: message.role === "user" ? "primary.main" : "white",
-                      color: message.role === "user" ? "white" : "text.primary",
+                      bgcolor: message.role === "user" ? "#4255ff" : "#2d2d2d", // 用戶訊息用 Quizlet 藍色，助手訊息用深色卡片背景
+                      color: message.role === "user" ? "#ffffff" : "#ffffff", // 所有文字都是白色
                       whiteSpace: "pre-line",
                       boxShadow: 1,
+                      border: message.role === "assistant" ? "1px solid rgba(255, 255, 255, 0.1)" : "none",
                     }}
                   >
-                    <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                    <Typography variant="body2" sx={{ fontSize: "0.875rem", color: "#ffffff" }}>
                       {message.content}
                     </Typography>
                   </Paper>
@@ -815,7 +816,7 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
 
             {/* 快速操作按鈕 */}
             {getCurrentQuickActions().length > 0 && (
-              <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
+              <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center" }}>
                 {getCurrentQuickActions().map((action, index) => (
                   <Chip
                     key={`quick-action-${currentStep}-${index}-${action}`}
@@ -830,7 +831,16 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
                       setMessages((prev) => [...prev, userMessage]);
                       handleQuickAction(action);
                     }}
-                    sx={{ cursor: "pointer", fontSize: "0.75rem" }}
+                    sx={{ 
+                      cursor: "pointer", 
+                      fontSize: "0.75rem",
+                      color: "#ffffff",
+                      borderColor: "#4255ff",
+                      "&:hover": {
+                        bgcolor: "rgba(66, 85, 255, 0.1)",
+                        borderColor: "#4255ff",
+                      }
+                    }}
                     color="primary"
                     variant="outlined"
                     size="small"
@@ -842,7 +852,7 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
           </Box>
 
           {/* 輸入框 */}
-          <Box sx={{ p: 2, borderTop: 1, borderColor: "divider", bgcolor: "white" }}>
+          <Box sx={{ p: 2, borderTop: 1, borderColor: "rgba(255, 255, 255, 0.1)", bgcolor: "#2d2d2d" }}>
             <Box sx={{ display: "flex", gap: 1 }}>
               <TextField
                 fullWidth
@@ -853,12 +863,42 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
                 onKeyPress={handleKeyPress}
                 multiline
                 maxRows={3}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: "#1e1e1e",
+                    color: "#ffffff",
+                    "& fieldset": {
+                      borderColor: "rgba(255, 255, 255, 0.2)",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "rgba(255, 255, 255, 0.3)",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#4255ff",
+                    },
+                  },
+                  "& .MuiInputBase-input": {
+                    color: "#ffffff",
+                    "&::placeholder": {
+                      color: "rgba(255, 255, 255, 0.5)",
+                      opacity: 1,
+                    },
+                  },
+                }}
               />
               <IconButton
-                color="primary"
                 onClick={handleSend}
                 disabled={!input.trim()}
-                sx={{ alignSelf: "flex-end" }}
+                sx={{ 
+                  alignSelf: "flex-end",
+                  color: "#4255ff",
+                  "&:hover": {
+                    bgcolor: "rgba(66, 85, 255, 0.1)",
+                  },
+                  "&.Mui-disabled": {
+                    color: "rgba(255, 255, 255, 0.3)",
+                  },
+                }}
               >
                 <SendIcon />
               </IconButton>

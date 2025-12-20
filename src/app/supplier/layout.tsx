@@ -17,24 +17,31 @@ import {
   Button,
   CircularProgress,
   IconButton,
+  InputBase,
+  Avatar,
+  Divider,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import HomeIcon from "@mui/icons-material/Home";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import StoreIcon from "@mui/icons-material/Store";
 import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
+import SearchIcon from "@mui/icons-material/Search";
+import NotificationsIcon from "@mui/icons-material/Notifications";
+import AddIcon from "@mui/icons-material/Add";
 import { signOut } from "next-auth/react";
 import AIAssistant from "@/components/AIAssistant";
 
 const drawerWidth = 240;
-const collapsedWidth = 80;
 
 const menuItems = [
-  { text: "設定", icon: <SettingsIcon />, path: "/supplier/setting" },
+  { text: "首頁", icon: <HomeIcon />, path: "/supplier" },
   { text: "優惠券管理", icon: <LocalOfferIcon />, path: "/supplier/coupon" },
   { text: "店鋪資訊", icon: <StoreIcon />, path: "/supplier/store" },
+  { text: "設定", icon: <SettingsIcon />, path: "/supplier/setting" },
 ];
 
 function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
@@ -44,7 +51,10 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [isSupplier, setIsSupplier] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [collapsed, setCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
+  const [userInfo, setUserInfo] = useState<{ name?: string; email?: string; image?: string } | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(true);
 
   useEffect(() => {
     setMounted(true);
@@ -53,7 +63,6 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!mounted) return;
     
-    // 等待 session 加载完成
     if (status === "loading") {
       setLoading(true);
       return;
@@ -61,77 +70,80 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
     
     if (status === "authenticated" && session?.userId) {
       checkSupplierStatus();
+      fetchUserInfo();
     } else if (status === "unauthenticated") {
-      // 延迟检查，避免在 session 建立过程中的临时状态误判
       const timer = setTimeout(() => {
         if (status === "unauthenticated") {
-      router.push("/login");
+          router.push("/login");
         }
       }, 1000);
       return () => clearTimeout(timer);
     }
   }, [mounted, status, session, router]);
 
+  const fetchUserInfo = async () => {
+    try {
+      const response = await fetch("/api/user");
+      if (response.ok) {
+        const data = await response.json();
+        setUserInfo({
+          name: data.name,
+          email: data.email,
+          image: data.image,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching user info:", error);
+    }
+  };
+
   const checkSupplierStatus = async () => {
     try {
-      // 检查 URL 参数，如果是从选择角色页面重定向来的，增加重试次数
       let fromRoleSelection = false;
       if (typeof window !== "undefined") {
         const urlParams = new URLSearchParams(window.location.search);
         fromRoleSelection = urlParams.get("role") === "Supplier";
       }
       
-      // 添加重试机制，因为选择角色后数据库更新可能需要一点时间
-      // 如果是从角色选择页面来的，增加重试次数
       let retries = fromRoleSelection ? 20 : 10;
       let userData = null;
       
       while (retries > 0) {
-      const response = await fetch("/api/user");
+        const response = await fetch("/api/user");
         
-      if (response.ok) {
+        if (response.ok) {
           userData = await response.json();
-        if (userData.dataType === "Supplier") {
-          setIsSupplier(true);
+          if (userData.dataType === "Supplier") {
+            setIsSupplier(true);
             setLoading(false);
-            // 清除 URL 参数
             if (fromRoleSelection && typeof window !== "undefined") {
               window.history.replaceState({}, "", "/supplier");
             }
             return;
           } else if (userData.dataType) {
-            // 如果是其他角色，重定向到首页
-          router.push("/");
+            router.push("/");
             setLoading(false);
             return;
           }
-          // 如果 dataType 为 null，等待一下再重试
           if (retries > 1) {
             await new Promise(resolve => setTimeout(resolve, fromRoleSelection ? 300 : 500));
-        }
-      } else {
-        // 檢查是否需要清除 session
-        const data = await response.json().catch(() => ({}));
-        
-        // 只有在明確標記 clearSession: true 且是 404（找不到用戶）時才清除 session
-        // 401（未登入）和 403（帳號鎖定）也需要清除
-        // 但 503（服務不可用）和 500（伺服器錯誤）不應該清除 session
-        if (data.clearSession && (response.status === 401 || response.status === 404 || response.status === 403)) {
-          // 確認資料庫中真的沒有用戶，才清除 session
-          console.log("Clearing session due to:", response.status, data);
-          await signOut({ callbackUrl: "/login", redirect: true });
+          }
+        } else {
+          const data = await response.json().catch(() => ({}));
+          
+          if (data.clearSession && (response.status === 401 || response.status === 404 || response.status === 403)) {
+            console.log("Clearing session due to:", response.status, data);
+            await signOut({ callbackUrl: "/login", redirect: true });
             setLoading(false);
-          return;
-        }
-        
-        // 如果是暫時的錯誤（503），不應該清除 session
-        if (response.status === 503) {
-          console.warn("Database temporarily unavailable, keeping session");
+            return;
+          }
+          
+          if (response.status === 503) {
+            console.warn("Database temporarily unavailable, keeping session");
             setLoading(false);
-          return;
-        }
-        
-          // 其他錯誤，等待後重試
+            return;
+          }
+          
           if (retries > 1) {
             await new Promise(resolve => setTimeout(resolve, 500));
           }
@@ -139,14 +151,10 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
         retries--;
       }
       
-      // 如果重试后还是没有 dataType，且是从角色选择页面来的，继续等待
-      // 否则重定向到选择页面（不登出）
       if (!userData || !userData.dataType) {
         if (fromRoleSelection) {
-          // 如果是从角色选择页面来的，再等待一下
           console.log("Still waiting for dataType update...");
           await new Promise(resolve => setTimeout(resolve, 1000));
-          // 再次检查
           const finalCheck = await fetch("/api/user");
           if (finalCheck.ok) {
             const finalData = await finalCheck.json();
@@ -166,16 +174,12 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      // 如果是其他角色，重定向到首页
       if (userData.dataType !== "Supplier") {
         router.push("/");
         setLoading(false);
       }
     } catch (error) {
       console.error("Error checking supplier status:", error);
-      // 網絡錯誤或其他錯誤，不應該立即清除 session
-      // 可能是暫時的網絡問題或資料庫連接問題
-      // 重定向到選擇頁面而不是登出
       router.push("/edit");
       setLoading(false);
     }
@@ -183,6 +187,13 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/login", redirect: true });
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      console.log("Search:", searchQuery);
+    }
   };
 
   if (!mounted || loading || status === "loading") {
@@ -193,6 +204,7 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
           alignItems: "center",
           justifyContent: "center",
           minHeight: "100vh",
+          bgcolor: "background.default",
         }}
       >
         <CircularProgress />
@@ -205,110 +217,211 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <Box sx={{ display: "flex" }}>
+    <Box sx={{ display: "flex", bgcolor: "background.default", minHeight: "100vh" }}>
+      {/* 頂部 AppBar - Quizlet 風格 */}
       <AppBar
         position="fixed"
-        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        sx={{
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          bgcolor: "#2d2d2d",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+          boxShadow: "none",
+        }}
       >
-        <Toolbar>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            廠商專區
-          </Typography>
-          <Button
-            color="inherit"
-            startIcon={<HomeIcon />}
-            onClick={() => router.push("/supplier")}
-            sx={{ mr: 2 }}
-          >
-            首頁
-          </Button>
-          <Button
-            color="inherit"
-            startIcon={<LogoutIcon />}
-            onClick={handleLogout}
-          >
-            登出
-          </Button>
+        <Toolbar sx={{ gap: 2, justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flex: 1 }}>
+            <IconButton
+              edge="start"
+              color="inherit"
+              onClick={() => setDrawerOpen(!drawerOpen)}
+            >
+              <MenuIcon />
+            </IconButton>
+
+            {/* 搜尋欄 */}
+            <Box
+              component="form"
+              onSubmit={handleSearch}
+              sx={{
+                flex: 1,
+                maxWidth: 600,
+                position: "relative",
+                bgcolor: "rgba(255, 255, 255, 0.1)",
+                borderRadius: "4px",
+                "&:hover": {
+                  bgcolor: "rgba(255, 255, 255, 0.15)",
+                },
+                "&:focus-within": {
+                  bgcolor: "rgba(255, 255, 255, 0.2)",
+                },
+                transition: "background-color 0.2s",
+              }}
+            >
+              <InputBase
+                placeholder="透過搜尋更快找到它"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{
+                  color: "inherit",
+                  width: "100%",
+                  pl: 4,
+                  pr: 1,
+                  py: 1,
+                }}
+                startAdornment={
+                  <SearchIcon sx={{ position: "absolute", left: 12, color: "text.secondary" }} />
+                }
+              />
+            </Box>
+          </Box>
+
+          {/* 右側按鈕 - 移到最右邊 */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "auto" }}>
+            <IconButton color="inherit" size="small">
+              <AddIcon />
+            </IconButton>
+            <IconButton color="inherit" size="small">
+              <NotificationsIcon />
+            </IconButton>
+            <IconButton
+              onClick={(e) => setUserMenuAnchor(e.currentTarget)}
+              sx={{ p: 0.5 }}
+            >
+              <Avatar
+                src={userInfo?.image || undefined}
+                sx={{ width: 32, height: 32 }}
+              >
+                {userInfo?.name?.charAt(0) || "U"}
+              </Avatar>
+            </IconButton>
+          </Box>
         </Toolbar>
       </AppBar>
+
+      {/* 用戶選單 */}
+      <Menu
+        anchorEl={userMenuAnchor}
+        open={Boolean(userMenuAnchor)}
+        onClose={() => setUserMenuAnchor(null)}
+      >
+        <MenuItem disabled>
+          <Typography variant="body2">{userInfo?.name || "使用者"}</Typography>
+        </MenuItem>
+        <MenuItem disabled>
+          <Typography variant="caption" color="text.secondary">
+            {userInfo?.email || ""}
+          </Typography>
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={() => { router.push("/supplier/setting"); setUserMenuAnchor(null); }}>
+          <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>設定</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => { handleLogout(); setUserMenuAnchor(null); }}>
+          <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>登出</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      {/* 左側導航欄 */}
       <Drawer
-        variant="permanent"
+        variant="persistent"
+        open={drawerOpen}
         sx={{
-          width: { xs: collapsedWidth, sm: collapsed ? collapsedWidth : drawerWidth },
+          width: drawerOpen ? drawerWidth : 0,
           flexShrink: 0,
+          transition: (theme) =>
+            theme.transitions.create("width", {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
           "& .MuiDrawer-paper": {
-            width: { xs: collapsedWidth, sm: collapsed ? collapsedWidth : drawerWidth },
+            width: drawerWidth,
             boxSizing: "border-box",
-            display: "flex",
-            flexDirection: "column",
-            transition: "width 0.3s ease",
+            bgcolor: "#1e1e1e",
+            borderRight: "1px solid rgba(255, 255, 255, 0.1)",
+            mt: "64px",
+            transition: (theme) =>
+              theme.transitions.create("width", {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+            overflowX: "hidden",
           },
         }}
       >
-        <Toolbar sx={{ display: "flex", justifyContent: collapsed ? "center" : "space-between" }}>
-          {!collapsed && (
-            <Typography variant="h6" noWrap>
-              廠商專區
-            </Typography>
-          )}
-          <IconButton onClick={() => setCollapsed(!collapsed)}>
-            {collapsed ? <MenuIcon /> : <ChevronLeftIcon />}
-          </IconButton>
-        </Toolbar>
-        <Box sx={{ overflow: "auto", flex: 1 }}>
+        <Box sx={{ overflow: "auto", p: 2 }}>
           <List>
             {menuItems.map((item) => (
-              <ListItem key={item.path} disablePadding>
+              <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
                 <ListItemButton
                   selected={pathname === item.path}
                   onClick={() => router.push(item.path)}
                   sx={{
-                    justifyContent: collapsed ? "center" : "flex-start",
-                    px: collapsed ? 2 : 3,
+                    borderRadius: "8px",
+                    py: 1.5,
+                    "&.Mui-selected": {
+                      bgcolor: "primary.main",
+                      color: "white",
+                      "&:hover": {
+                        bgcolor: "primary.dark",
+                      },
+                    },
+                    "&:hover": {
+                      bgcolor: "rgba(255, 255, 255, 0.05)",
+                    },
                   }}
                 >
                   <ListItemIcon
                     sx={{
-                      minWidth: 0,
-                      mr: collapsed ? 0 : 3,
-                      justifyContent: "center",
+                      minWidth: 40,
+                      color: pathname === item.path ? "inherit" : "text.secondary",
                     }}
                   >
                     {item.icon}
                   </ListItemIcon>
-                  {!collapsed && <ListItemText primary={item.text} />}
+                  <ListItemText 
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      fontSize: "0.95rem",
+                      fontWeight: pathname === item.path ? 600 : 400,
+                    }}
+                  />
                 </ListItemButton>
               </ListItem>
             ))}
           </List>
         </Box>
-        <Box
-          sx={{
-            p: 2,
-            borderTop: 1,
-            borderColor: "divider",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <AIAssistant userRole="Supplier" />
-        </Box>
       </Drawer>
+
+      {/* 主要內容區域 */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: {
-            sm: `calc(100% - ${collapsed ? collapsedWidth : drawerWidth}px)`,
-          },
-          transition: "width 0.3s ease",
+          display: "flex",
+          flexDirection: "column",
+          mt: "64px", // AppBar 高度
+          bgcolor: "background.default",
+          minHeight: "calc(100vh - 64px)",
+          overflow: "auto",
+          // 添加內邊距，提供視覺呼吸空間
+          p: 3, // 24px 的內邊距
+          pt: 4, // 頂部稍微加厚，確保與 AppBar 有足夠間距
+          // 當 Drawer 關閉時，保持左側間距
+          pl: drawerOpen ? 3 : "16px", // Drawer 打開時使用統一 padding，關閉時保留 16px
+          transition: (theme) =>
+            theme.transitions.create("padding-left", {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
         }}
       >
-        <Toolbar />
         {children}
       </Box>
+
+      {/* AI 助手 - 浮動視窗 */}
+      <AIAssistant userRole="Supplier" />
     </Box>
   );
 }
@@ -327,6 +440,7 @@ export default function SupplierLayout({
             alignItems: "center",
             justifyContent: "center",
             minHeight: "100vh",
+            bgcolor: "background.default",
           }}
         >
           <CircularProgress />

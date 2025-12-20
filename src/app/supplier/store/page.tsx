@@ -26,6 +26,8 @@ import SaveIcon from "@mui/icons-material/Save";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
 
 interface Store {
   id: string;
@@ -290,6 +292,21 @@ export default function SupplierStorePage() {
               rows={2}
               placeholder="請輸入完整的店鋪地址"
             />
+            {defaultFormData.location && (
+              <Box sx={{ mt: 1 }}>
+                <Button
+                  size="small"
+                  startIcon={<OpenInNewIcon />}
+                  onClick={() => {
+                    const encodedAddress = encodeURIComponent(defaultFormData.location);
+                    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                  }}
+                  sx={{ textTransform: 'none' }}
+                >
+                  在 Google Maps 中查看
+                </Button>
+              </Box>
+            )}
           </Grid>
           <Grid item xs={12}>
             <TextField
@@ -367,7 +384,26 @@ export default function SupplierStorePage() {
                 {stores.map((store) => (
                   <TableRow key={store.id}>
                     <TableCell>{store.name}</TableCell>
-                    <TableCell>{store.location || "-"}</TableCell>
+                    <TableCell>
+                      {store.location ? (
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Typography variant="body2">{store.location}</Typography>
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              const encodedAddress = encodeURIComponent(store.location || "");
+                              window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                            }}
+                            sx={{ p: 0.5 }}
+                            title="在 Google Maps 中查看"
+                          >
+                            <LocationOnIcon fontSize="small" color="primary" />
+                          </IconButton>
+                        </Box>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
                     <TableCell>{store.businessHours || "-"}</TableCell>
                     <TableCell>{store.website || "-"}</TableCell>
                     <TableCell align="right">
@@ -417,6 +453,21 @@ export default function SupplierStorePage() {
               rows={2}
               placeholder="請輸入完整的店鋪地址"
             />
+            {storeFormData.location && (
+              <Box sx={{ mt: 1 }}>
+                <Button
+                  size="small"
+                  startIcon={<OpenInNewIcon />}
+                  onClick={() => {
+                    const encodedAddress = encodeURIComponent(storeFormData.location);
+                    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                  }}
+                  sx={{ textTransform: 'none' }}
+                >
+                  在 Google Maps 中查看
+                </Button>
+              </Box>
+            )}
             <TextField
               label="營業時間"
               value={storeFormData.businessHours}

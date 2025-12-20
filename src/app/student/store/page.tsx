@@ -298,7 +298,23 @@ export default function StudentStorePage() {
                         </Typography>
                       )}
                       {coupon.storeLocation && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        <Typography 
+                          variant="body2" 
+                          color="primary"
+                          sx={{ 
+                            mt: 0.5,
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            '&:hover': {
+                              opacity: 0.8,
+                            }
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const encodedAddress = encodeURIComponent(coupon.storeLocation || "");
+                            window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                          }}
+                        >
                           📍 {coupon.storeLocation}
                         </Typography>
                       )}
@@ -377,7 +393,23 @@ export default function StudentStorePage() {
                         </Typography>
                       )}
                       {coupon.storeLocation && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        <Typography 
+                          variant="body2" 
+                          color="primary"
+                          sx={{ 
+                            mt: 0.5,
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            '&:hover': {
+                              opacity: 0.8,
+                            }
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const encodedAddress = encodeURIComponent(coupon.storeLocation || "");
+                            window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                          }}
+                        >
                           📍 {coupon.storeLocation}
                         </Typography>
                       )}
@@ -444,7 +476,26 @@ export default function StudentStorePage() {
                 </Typography>
               )}
               {selectedCoupon.storeLocation && (
-                <Typography sx={{ mt: 1 }}><strong>地址:</strong> {selectedCoupon.storeLocation}</Typography>
+                <Typography sx={{ mt: 1 }}>
+                  <strong>地址:</strong>{" "}
+                  <Typography
+                    component="span"
+                    color="primary"
+                    sx={{
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      '&:hover': {
+                        opacity: 0.8,
+                      }
+                    }}
+                    onClick={() => {
+                      const encodedAddress = encodeURIComponent(selectedCoupon.storeLocation || "");
+                      window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                    }}
+                  >
+                    {selectedCoupon.storeLocation}
+                  </Typography>
+                </Typography>
               )}
               {selectedCoupon.storeHours && (
                 <Typography sx={{ mt: 1 }}><strong>營業時間:</strong> {selectedCoupon.storeHours}</Typography>
@@ -485,7 +536,21 @@ export default function StudentStorePage() {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                     <strong>📍 地址:</strong>
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography 
+                    variant="body1"
+                    color="primary"
+                    sx={{
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      '&:hover': {
+                        opacity: 0.8,
+                      }
+                    }}
+                    onClick={() => {
+                      const encodedAddress = encodeURIComponent(selectedStoreInfo.location || "");
+                      window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                    }}
+                  >
                     {selectedStoreInfo.location}
                   </Typography>
                 </Box>

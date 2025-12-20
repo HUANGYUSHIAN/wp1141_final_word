@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Box,
   Paper,
@@ -62,6 +63,8 @@ interface Word {
 
 export default function StudentVocabularyPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [myVocabularies, setMyVocabularies] = useState<Vocabulary[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -123,6 +126,24 @@ export default function StudentVocabularyPage() {
   useEffect(() => {
     fetchMyVocabularies();
   }, [page, rowsPerPage]);
+
+  // 檢查 URL 參數，如果 create=true 則自動打開新增對話框
+  useEffect(() => {
+    const createParam = searchParams.get("create");
+    if (createParam === "true") {
+      setOpenCreateDialog(true);
+      setCreateLangUse("");
+      setCreateLangExp("");
+      setLangsSet(false);
+      setSearchWord("");
+      setCreateVocabularyName("");
+      setCreatePublic(true);
+      setCreateWords([]);
+      setCreateError("");
+      // 清除 URL 參數
+      router.replace("/student/vocabulary", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const fetchMyVocabularies = async () => {
     try {
