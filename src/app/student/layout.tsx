@@ -306,7 +306,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
             alignItems: "center",
           }}
         >
-          <AIAssistant />
+          <AIAssistant userRole="Student" />
         </Box>
       </Drawer>
       <Box

@@ -69,20 +69,42 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, period, link, text, picture, storeName, storeLocation, storeHours, storeWebsite } = body;
+    const { name, period, link, text, picture, storeName, storeLocation, storeHours, storeWebsite, storeId } = body;
 
     if (!name || !period) {
       return NextResponse.json({ error: "名稱和使用期限為必填" }, { status: 400 });
     }
 
-    // 如果沒有提供店鋪資訊，從供應商資料獲取
+    const supplier = user.supplierData;
+
+    // 決定使用哪個店家的資訊
     let finalStoreName = storeName;
     let finalStoreLocation = storeLocation;
     let finalStoreHours = storeHours;
     let finalStoreWebsite = storeWebsite;
 
-    if (!finalStoreName || !finalStoreLocation) {
-      const supplier = user.supplierData;
+    // 如果提供了 storeId，從 Store 模型獲取店家資訊
+    if (storeId) {
+      const store = await prisma.store.findUnique({
+        where: { id: storeId },
+      });
+
+      if (!store) {
+        return NextResponse.json({ error: "找不到指定的店家" }, { status: 404 });
+      }
+
+      // 確認這個店家屬於當前供應商
+      if (store.supplierId !== supplier.id) {
+        return NextResponse.json({ error: "無權限使用此店家" }, { status: 403 });
+      }
+
+      // 使用店家的資訊
+      finalStoreName = store.name;
+      finalStoreLocation = store.location || null;
+      finalStoreHours = store.businessHours || null;
+      finalStoreWebsite = store.website || null;
+    } else {
+      // 如果沒有提供店鋪資訊，從供應商資料獲取
       if (!finalStoreName) finalStoreName = supplier.storeName || null;
       if (!finalStoreLocation) finalStoreLocation = supplier.storeLocation || null;
       if (!finalStoreHours) finalStoreHours = supplier.storeHours || null;
@@ -120,7 +142,6 @@ export async function POST(request: Request) {
     });
 
     // 將優惠券 ID 添加到供應商的 lsuppcoIDs
-    const supplier = user.supplierData;
     const updatedCouponIds = [...(supplier.lsuppcoIDs || []), coupon.couponId];
 
     await prisma.supplier.update({

@@ -292,7 +292,7 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
             alignItems: "center",
           }}
         >
-          <AIAssistant />
+          <AIAssistant userRole="Supplier" />
         </Box>
       </Drawer>
       <Box

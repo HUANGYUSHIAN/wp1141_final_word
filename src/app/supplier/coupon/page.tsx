@@ -23,6 +23,10 @@ import {
   Card,
   CardMedia,
   CardContent,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -67,10 +71,19 @@ export default function SupplierCouponPage() {
     businessHours: "",
     website: "",
   });
+  const [stores, setStores] = useState<Array<{
+    id: string;
+    name: string;
+    location: string | null;
+    businessHours: string | null;
+    website: string | null;
+  }>>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>("");
 
   useEffect(() => {
     fetchCoupons();
     fetchStoreInfo();
+    fetchStores();
   }, []);
 
   const fetchStoreInfo = async () => {
@@ -88,6 +101,18 @@ export default function SupplierCouponPage() {
       }
     } catch (error) {
       console.error("Error fetching store info:", error);
+    }
+  };
+
+  const fetchStores = async () => {
+    try {
+      const response = await fetch("/api/supplier/stores");
+      if (response.ok) {
+        const data = await response.json();
+        setStores(data.stores || []);
+      }
+    } catch (error) {
+      console.error("Error fetching stores:", error);
     }
   };
 
@@ -224,16 +249,36 @@ export default function SupplierCouponPage() {
       return;
     }
 
+    // 決定使用哪個店家的資訊
+    let finalStoreName = storeInfo.name;
+    let finalStoreLocation = storeInfo.location;
+    let finalStoreHours = storeInfo.businessHours;
+    let finalStoreWebsite = storeInfo.website || null;
+    let storeId: string | null = null;
+
+    // 如果選擇了店家，使用店家的資訊
+    if (selectedStoreId) {
+      const selectedStore = stores.find(s => s.id === selectedStoreId);
+      if (selectedStore) {
+        finalStoreName = selectedStore.name;
+        finalStoreLocation = selectedStore.location || "";
+        finalStoreHours = selectedStore.businessHours || "";
+        finalStoreWebsite = selectedStore.website || null;
+        storeId = selectedStore.id;
+      }
+    }
+
     try {
       const response = await fetch("/api/supplier/coupons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          storeName: storeInfo.name,
-          storeLocation: storeInfo.location,
-          storeHours: storeInfo.businessHours,
-          storeWebsite: storeInfo.website || null,
+          storeName: finalStoreName,
+          storeLocation: finalStoreLocation,
+          storeHours: finalStoreHours,
+          storeWebsite: finalStoreWebsite,
+          storeId: storeId,
         }),
       });
       if (response.ok) {
@@ -245,6 +290,7 @@ export default function SupplierCouponPage() {
           text: "",
           picture: "",
         });
+        setSelectedStoreId("");
         setError("");
         // 刷新列表
         fetchCoupons();
@@ -316,6 +362,31 @@ export default function SupplierCouponPage() {
             fullWidth
             placeholder="https://example.com/image.jpg"
           />
+          <FormControl fullWidth>
+            <InputLabel>選擇店家（選填）</InputLabel>
+            <Select
+              value={selectedStoreId}
+              onChange={(e) => setSelectedStoreId(e.target.value)}
+              label="選擇店家（選填）"
+            >
+              <MenuItem value="">
+                <em>使用預設店家資訊</em>
+              </MenuItem>
+              {stores.map((store) => (
+                <MenuItem key={store.id} value={store.id}>
+                  {store.name} {store.location ? `- ${store.location}` : ""}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {selectedStoreId && (
+            <Alert severity="info">
+              已選擇店家：{stores.find(s => s.id === selectedStoreId)?.name}
+              {stores.find(s => s.id === selectedStoreId)?.location && 
+                ` - ${stores.find(s => s.id === selectedStoreId)?.location}`
+              }
+            </Alert>
+          )}
           <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
             <Button
               variant="contained"
@@ -333,7 +404,7 @@ export default function SupplierCouponPage() {
         <Table>
             <TableHead>
             <TableRow>
-              <TableCell>優惠券ID</TableCell>
+              <TableCell>分店名稱</TableCell>
               <TableCell>名稱</TableCell>
               <TableCell>使用期限</TableCell>
               <TableCell>擁有者人數</TableCell>
@@ -356,7 +427,7 @@ export default function SupplierCouponPage() {
             ) : (
               coupons.map((coupon) => (
                 <TableRow key={coupon.couponId}>
-                  <TableCell>{coupon.couponId}</TableCell>
+                  <TableCell>{coupon.storeName || "預設店家"}</TableCell>
                   <TableCell>{coupon.name}</TableCell>
                   <TableCell>
                     {new Date(coupon.period).toLocaleString('zh-TW', {
