@@ -41,7 +41,6 @@ const menuItems = [
   { text: "首頁", icon: <HomeIcon />, path: "/supplier" },
   { text: "優惠券管理", icon: <LocalOfferIcon />, path: "/supplier/coupon" },
   { text: "店鋪資訊", icon: <StoreIcon />, path: "/supplier/store" },
-  { text: "設定", icon: <SettingsIcon />, path: "/supplier/setting" },
 ];
 
 function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
@@ -313,7 +312,7 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
           </Typography>
         </MenuItem>
         <Divider />
-        <MenuItem onClick={() => { router.push("/supplier/setting"); setUserMenuAnchor(null); }}>
+        <MenuItem onClick={() => { router.push("/supplier/store"); setUserMenuAnchor(null); }}>
           <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
           <ListItemText>設定</ListItemText>
         </MenuItem>
@@ -323,76 +322,78 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
         </MenuItem>
       </Menu>
 
-      {/* 左側導航欄 */}
-      <Drawer
-        variant="persistent"
-        open={drawerOpen}
-        sx={{
-          width: drawerOpen ? drawerWidth : 0,
-          flexShrink: 0,
-          transition: (theme) =>
-            theme.transitions.create("width", {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.enteringScreen,
-            }),
-          "& .MuiDrawer-paper": {
-            width: drawerWidth,
-            boxSizing: "border-box",
-            bgcolor: "#1e1e1e",
-            borderRight: "1px solid rgba(255, 255, 255, 0.1)",
-            mt: "64px",
+      {/* 左側導航欄 - 設定頁面不顯示 */}
+      {pathname !== "/supplier/setting" && (
+        <Drawer
+          variant="persistent"
+          open={drawerOpen}
+          sx={{
+            width: drawerOpen ? drawerWidth : 0,
+            flexShrink: 0,
             transition: (theme) =>
               theme.transitions.create("width", {
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.enteringScreen,
               }),
-            overflowX: "hidden",
-          },
-        }}
-      >
-        <Box sx={{ overflow: "auto", p: 2 }}>
-          <List>
-            {menuItems.map((item) => (
-              <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
-                <ListItemButton
-                  selected={pathname === item.path}
-                  onClick={() => router.push(item.path)}
-                  sx={{
-                    borderRadius: "8px",
-                    py: 1.5,
-                    "&.Mui-selected": {
-                      bgcolor: "primary.main",
-                      color: "white",
-                      "&:hover": {
-                        bgcolor: "primary.dark",
-                      },
-                    },
-                    "&:hover": {
-                      bgcolor: "rgba(255, 255, 255, 0.05)",
-                    },
-                  }}
-                >
-                  <ListItemIcon
+            "& .MuiDrawer-paper": {
+              width: drawerWidth,
+              boxSizing: "border-box",
+              bgcolor: "#1e1e1e",
+              borderRight: "1px solid rgba(255, 255, 255, 0.1)",
+              mt: "64px",
+              transition: (theme) =>
+                theme.transitions.create("width", {
+                  easing: theme.transitions.easing.sharp,
+                  duration: theme.transitions.duration.enteringScreen,
+                }),
+              overflowX: "hidden",
+            },
+          }}
+        >
+          <Box sx={{ overflow: "auto", p: 2 }}>
+            <List>
+              {menuItems.map((item) => (
+                <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
+                  <ListItemButton
+                    selected={pathname === item.path}
+                    onClick={() => router.push(item.path)}
                     sx={{
-                      minWidth: 40,
-                      color: pathname === item.path ? "inherit" : "text.secondary",
+                      borderRadius: "8px",
+                      py: 1.5,
+                      "&.Mui-selected": {
+                        bgcolor: "primary.main",
+                        color: "white",
+                        "&:hover": {
+                          bgcolor: "primary.dark",
+                        },
+                      },
+                      "&:hover": {
+                        bgcolor: "rgba(255, 255, 255, 0.05)",
+                      },
                     }}
                   >
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary={item.text}
-                    primaryTypographyProps={{
-                      fontSize: "0.95rem",
-                      fontWeight: pathname === item.path ? 600 : 400,
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-        </Box>
-      </Drawer>
+                    <ListItemIcon
+                      sx={{
+                        minWidth: 40,
+                        color: pathname === item.path ? "inherit" : "text.secondary",
+                      }}
+                    >
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={item.text}
+                      primaryTypographyProps={{
+                        fontSize: "0.95rem",
+                        fontWeight: pathname === item.path ? 600 : 400,
+                      }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+        </Drawer>
+      )}
 
       {/* 主要內容區域 */}
       <Box
@@ -408,8 +409,8 @@ function SupplierLayoutContent({ children }: { children: React.ReactNode }) {
           // 添加內邊距，提供視覺呼吸空間
           p: 3, // 24px 的內邊距
           pt: 4, // 頂部稍微加厚，確保與 AppBar 有足夠間距
-          // 當 Drawer 關閉時，保持左側間距
-          pl: drawerOpen ? 3 : "16px", // Drawer 打開時使用統一 padding，關閉時保留 16px
+          // 設定頁面不顯示側邊欄，所以不需要左側 padding；其他頁面根據 Drawer 狀態調整
+          pl: pathname === "/supplier/setting" ? 3 : (drawerOpen ? 3 : "16px"), // Drawer 打開時使用統一 padding，關閉時保留 16px
           transition: (theme) =>
             theme.transitions.create("padding-left", {
               easing: theme.transitions.easing.sharp,

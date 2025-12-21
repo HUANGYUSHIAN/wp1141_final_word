@@ -101,7 +101,7 @@ export default function SupplierPage() {
                 boxShadow: 4,
               },
             }}
-            onClick={() => router.push("/supplier/setting")}
+            onClick={() => router.push("/supplier/store")}
           >
             <CardContent sx={{ p: 3 }}>
               <SettingsIcon sx={{ fontSize: 40, color: "primary.main", mb: 2 }} />

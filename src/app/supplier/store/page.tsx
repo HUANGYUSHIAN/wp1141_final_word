@@ -237,6 +237,77 @@ export default function SupplierStorePage() {
     }
   };
 
+  // 統一的 Google Maps 連結生成函數
+  // 目標：精準開啟「店家資訊頁面」而非僅顯示「地址座標」
+  // 策略：優先使用 Google Places API (New) 獲取精準的店家連結，失敗時回退到搜尋格式
+  // 注意：當用戶更改地址後，為了確保跳轉到正確的新地址，我們優先使用備案搜尋格式
+  const openGoogleMaps = async (storeName: string | null | undefined, address: string | null | undefined) => {
+    // 步驟1：清理參數（去除前後空格，過濾空字串、null 和 undefined）
+    const cleanStoreName = storeName?.trim() || null;
+    const cleanAddress = address?.trim() || null;
+    
+    let textQuery = "";
+    
+    // 步驟2：構建搜尋字串（優先使用店名+地址組合）
+    // 格式範例：五九麵館 100臺北市中正區羅斯福路三段286巷4弄12號
+    // 注意：店名和地址中間必須有一個空格
+    if (cleanStoreName && cleanAddress) {
+      // 最優：同時包含店名和地址，能精準找到店家頁面
+      textQuery = `${cleanStoreName} ${cleanAddress}`;
+    } else if (cleanStoreName) {
+      // 次優：只有店名（可能包含分店名，如「五九麵館 公館店」）
+      textQuery = cleanStoreName;
+    } else if (cleanAddress) {
+      // 最後：只有地址（只能顯示座標位置）
+      textQuery = cleanAddress;
+    } else {
+      // 如果都沒有有效值，不執行跳轉
+      console.warn("Google Maps: storeName and address are both empty, cannot open map");
+      return;
+    }
+    
+    // 步驟3：優先使用 Google Places API (New) 獲取精準的店家連結
+    // 注意：如果用戶更改了地址但還沒儲存，API 可能返回舊地址的店家連結
+    // 為了確保準確性，我們只在有地址的情況下嘗試使用 API，但最終還是使用備案邏輯
+    // 這樣可以確保跳轉到用戶當前輸入的地址，而不是舊地址
+    try {
+      const response = await fetch("/api/places/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ textQuery }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // 如果 API 有回傳 googleMapsUri，且搜尋字串包含地址，可以使用
+        // 但為了確保用戶看到的是最新輸入的地址，我們還是優先使用備案邏輯
+        // 只有在只有店名沒有地址時，才使用 API 返回的連結
+        if (data.success && data.googleMapsUri && !cleanAddress) {
+          // 只有店名沒有地址時，使用 API 返回的連結
+          window.open(data.googleMapsUri, '_blank', 'noopener,noreferrer');
+          return;
+        }
+        // 如果有地址，使用備案邏輯確保跳轉到正確的位置
+      }
+    } catch (error) {
+      // API 請求出錯，繼續執行備案邏輯
+      console.error("Google Places API 請求錯誤:", error);
+    }
+    
+    // 步驟4：備案邏輯 - 使用 Google Maps 官方的 Search API 標準格式
+    // 這個方法會直接使用用戶輸入的地址進行搜尋，確保跳轉到正確的位置
+    // 使用 encodeURIComponent 處理 query 字串
+    const encodedQuery = encodeURIComponent(textQuery);
+    // api=1 是固定參數，不需要使用 API 金鑰，用於觸發地點搜尋
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`;
+    
+    // 步驟5：在新視窗開啟，並設置安全屬性
+    window.open(mapsUrl, '_blank', 'noopener,noreferrer');
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
@@ -298,8 +369,7 @@ export default function SupplierStorePage() {
                   size="small"
                   startIcon={<OpenInNewIcon />}
                   onClick={() => {
-                    const encodedAddress = encodeURIComponent(defaultFormData.location);
-                    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                    openGoogleMaps(defaultFormData.name, defaultFormData.location);
                   }}
                   sx={{ textTransform: 'none' }}
                 >
@@ -391,8 +461,7 @@ export default function SupplierStorePage() {
                           <IconButton
                             size="small"
                             onClick={() => {
-                              const encodedAddress = encodeURIComponent(store.location || "");
-                              window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                              openGoogleMaps(store.name, store.location);
                             }}
                             sx={{ p: 0.5 }}
                             title="在 Google Maps 中查看"
@@ -459,8 +528,7 @@ export default function SupplierStorePage() {
                   size="small"
                   startIcon={<OpenInNewIcon />}
                   onClick={() => {
-                    const encodedAddress = encodeURIComponent(storeFormData.location);
-                    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                    openGoogleMaps(storeFormData.name, storeFormData.location);
                   }}
                   sx={{ textTransform: 'none' }}
                 >

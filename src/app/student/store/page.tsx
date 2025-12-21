@@ -59,6 +59,71 @@ export default function StudentStorePage() {
   const [tabValue, setTabValue] = useState(0);
   const { width, height } = useWindowSize();
 
+  // 統一的 Google Maps 連結生成函數
+  // 目標：精準開啟「店家資訊頁面」而非僅顯示「地址座標」
+  // 策略：優先使用 Google Places API (New) 獲取精準的店家連結，失敗時回退到搜尋格式
+  const openGoogleMaps = async (storeName: string | null | undefined, address: string | null | undefined) => {
+    // 步驟1：清理參數（去除前後空格，過濾空字串、null 和 undefined）
+    const cleanStoreName = storeName?.trim() || null;
+    const cleanAddress = address?.trim() || null;
+    
+    let textQuery = "";
+    
+    // 步驟2：構建搜尋字串（優先使用店名+地址組合）
+    // 格式範例：五九麵館 100臺北市中正區羅斯福路三段286巷4弄12號
+    // 注意：店名和地址中間必須有一個空格
+    if (cleanStoreName && cleanAddress) {
+      // 最優：同時包含店名和地址，能精準找到店家頁面
+      textQuery = `${cleanStoreName} ${cleanAddress}`;
+    } else if (cleanStoreName) {
+      // 次優：只有店名（可能包含分店名，如「五九麵館 公館店」）
+      textQuery = cleanStoreName;
+    } else if (cleanAddress) {
+      // 最後：只有地址（只能顯示座標位置）
+      textQuery = cleanAddress;
+    } else {
+      // 如果都沒有有效值，不執行跳轉
+      console.warn("Google Maps: storeName and address are both empty, cannot open map");
+      return;
+    }
+    
+    // 步驟3：優先使用 Google Places API (New) 獲取精準的店家連結
+    try {
+      const response = await fetch("/api/places/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ textQuery }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // 如果 API 有回傳 googleMapsUri，直接使用
+        if (data.success && data.googleMapsUri) {
+          window.open(data.googleMapsUri, '_blank', 'noopener,noreferrer');
+          return;
+        }
+      }
+      
+      // API 請求失敗或沒有結果，繼續執行備案邏輯
+      console.log("Google Places API 未找到結果，使用備案搜尋格式");
+    } catch (error) {
+      // API 請求出錯，繼續執行備案邏輯
+      console.error("Google Places API 請求錯誤:", error);
+    }
+    
+    // 步驟4：備案邏輯 - 使用 Google Maps 官方的 Search API 標準格式
+    // 使用 encodeURIComponent 處理 query 字串
+    const encodedQuery = encodeURIComponent(textQuery);
+    // api=1 是固定參數，不需要使用 API 金鑰，用於觸發地點搜尋
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`;
+    
+    // 步驟5：在新視窗開啟，並設置安全屬性
+    window.open(mapsUrl, '_blank', 'noopener,noreferrer');
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -311,8 +376,7 @@ export default function StudentStorePage() {
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            const encodedAddress = encodeURIComponent(coupon.storeLocation || "");
-                            window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                            openGoogleMaps(coupon.storeName, coupon.storeLocation);
                           }}
                         >
                           📍 {coupon.storeLocation}
@@ -406,8 +470,7 @@ export default function StudentStorePage() {
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            const encodedAddress = encodeURIComponent(coupon.storeLocation || "");
-                            window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                            openGoogleMaps(coupon.storeName, coupon.storeLocation);
                           }}
                         >
                           📍 {coupon.storeLocation}
@@ -489,8 +552,7 @@ export default function StudentStorePage() {
                       }
                     }}
                     onClick={() => {
-                      const encodedAddress = encodeURIComponent(selectedCoupon.storeLocation || "");
-                      window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                      openGoogleMaps(selectedCoupon.storeName, selectedCoupon.storeLocation);
                     }}
                   >
                     {selectedCoupon.storeLocation}
@@ -547,8 +609,7 @@ export default function StudentStorePage() {
                       }
                     }}
                     onClick={() => {
-                      const encodedAddress = encodeURIComponent(selectedStoreInfo.location || "");
-                      window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+                      openGoogleMaps(selectedStoreInfo.name, selectedStoreInfo.location);
                     }}
                   >
                     {selectedStoreInfo.location}
