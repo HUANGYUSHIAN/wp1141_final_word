@@ -55,16 +55,38 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
   const [aiAnswerTime, setAiAnswerTime] = useState<number | null>(null)
   const [aiAnswered, setAiAnswered] = useState(false)
 
-  const TOTAL_QUESTIONS = 20
   const TIME_LIMIT = 10
-  const AI_CORRECT_RATE = 0.9
-  const AI_MIN_TIME = 2
-  const AI_MAX_TIME = 5
+  const [totalQuestions, setTotalQuestions] = useState(10)
+  const [aiCorrectRate, setAiCorrectRate] = useState(0.9)
+  const [aiMinTime, setAiMinTime] = useState(2)
+  const [aiMaxTime, setAiMaxTime] = useState(5)
+
+  // 获取游戏参数
+  useEffect(() => {
+    const fetchGameParams = async () => {
+      try {
+        const response = await fetch("/api/student/game/params");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.aiKing) {
+            setTotalQuestions(data.aiKing.totalQuestions || 10);
+            setAiCorrectRate(data.aiKing.aiCorrectRate || 0.9);
+            setAiMinTime(data.aiKing.aiMinTime || 2);
+            setAiMaxTime(data.aiKing.aiMaxTime || 5);
+          }
+        }
+      } catch (error) {
+        console.error("获取游戏参数失败:", error);
+      }
+    };
+    fetchGameParams();
+  }, []);
 
   // 生成题目
   useEffect(() => {
+    if (totalQuestions === 0) return; // 等待参数加载
     const generatedQuestions: Question[] = []
-    for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+    for (let i = 0; i < totalQuestions; i++) {
       // 混合选项：随机选择 0-4 中的一种类型
       const actualQuestionType = Math.floor(Math.random() * 5) as QuestionType
       const question = examiner(words, actualQuestionType)
@@ -101,8 +123,8 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
     const currentQuestion = questions[currentQuestionIndex]
     if (!currentQuestion) return
 
-    // AI 在 2-5 秒之间随机时间回答
-    const aiTime = Math.random() * (AI_MAX_TIME - AI_MIN_TIME) + AI_MIN_TIME
+    // AI 在 aiMinTime-aiMaxTime 秒之间随机时间回答
+    const aiTime = Math.random() * (aiMaxTime - aiMinTime) + aiMinTime
     setAiAnswerTime(Math.round(aiTime * 10) / 10)
 
     const aiTimer = setTimeout(() => {
@@ -112,8 +134,8 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
         return
       }
 
-      // 90% 机会答对
-      const isCorrect = Math.random() < AI_CORRECT_RATE
+      // 根据参数设定的答对率
+      const isCorrect = Math.random() < aiCorrectRate
       const aiAnswer = isCorrect 
         ? currentQuestion.correctAnswer 
         : Math.floor(Math.random() * 4)
@@ -129,7 +151,7 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
     }, aiTime * 1000)
 
     return () => clearTimeout(aiTimer)
-  }, [stage, currentQuestionIndex, questions.length, aiAnswered, currentAnswer])
+  }, [stage, currentQuestionIndex, questions.length, aiAnswered, currentAnswer, aiMinTime, aiMaxTime, aiCorrectRate])
 
   const handleTimeUp = () => {
     if (currentAnswer !== null) return
@@ -367,7 +389,7 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
     return null
   }
 
-  const progress = ((currentQuestionIndex + 1) / TOTAL_QUESTIONS) * 100
+  const progress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0
 
   return (
     <Box sx={{ mt: 4, maxWidth: 800, mx: 'auto' }}>
@@ -376,7 +398,7 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              進度: {currentQuestionIndex + 1} / {TOTAL_QUESTIONS}
+              進度: {currentQuestionIndex + 1} / {totalQuestions}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               你的得分: {playerScore.toFixed(3)} | 電腦得分: {aiScore.toFixed(3)}

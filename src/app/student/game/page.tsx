@@ -236,20 +236,44 @@ export default function GamePage() {
     setAiGameResult({ playerScore, aiScore, wrongAnswers })
     setStage('result')
     
-    // 計算點數：玩家得分 - 電腦得分，如果>0則四捨五入取整數
+    // 獲取遊戲參數中的 scoreMultiplier
+    let scoreMultiplier = 1;
+    try {
+      const paramsResponse = await fetch('/api/student/game/params');
+      if (paramsResponse.ok) {
+        const paramsData = await paramsResponse.json();
+        scoreMultiplier = paramsData.aiKing?.scoreMultiplier || 1;
+      }
+    } catch (error) {
+      console.error('獲取遊戲參數失敗:', error);
+    }
+    
+    // 計算點數：玩家得分 - 電腦得分，如果>0則乘以倍數並四捨五入取整數
     const finalScore = playerScore - aiScore
-    const earnedPoints = finalScore > 0 ? Math.round(finalScore) : 0
+    const earnedPoints = finalScore > 0 ? Math.round(finalScore * scoreMultiplier) : 0
 
     if (earnedPoints > 0) {
       try {
+        // 獲取總題數（用於計算 totalTime）
+        let totalQuestions = 10;
+        try {
+          const paramsResponse = await fetch('/api/student/game/params');
+          if (paramsResponse.ok) {
+            const paramsData = await paramsResponse.json();
+            totalQuestions = paramsData.aiKing?.totalQuestions || 10;
+          }
+        } catch (error) {
+          console.error('獲取遊戲參數失敗:', error);
+        }
+
         const response = await fetch('/api/student/game', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             accuracy: 100,
-            totalTime: 200000, // 20題 * 10秒
-            questionCount: 20,
-            correctCount: 20 - wrongAnswers.length,
+            totalTime: totalQuestions * 10000, // 總題數 * 10秒
+            questionCount: totalQuestions,
+            correctCount: totalQuestions - wrongAnswers.length,
             earnedPoints,
           }),
         })

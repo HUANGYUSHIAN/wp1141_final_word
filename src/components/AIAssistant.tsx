@@ -545,7 +545,9 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
         sx={{
           position: "fixed",
           bottom: 24,
-          right: 24,
+          ...(userRole === "Supplier" || userRole === "Student" 
+            ? { left: userRole === "Student" ? 264 : 24 } // Student: drawerWidth(240) + 24, Supplier: 24
+            : { right: 24 }),
           zIndex: 1300,
         }}
       >
@@ -578,7 +580,9 @@ export default function AIAssistant({ userRole }: AIAssistantProps) {
         sx={{
           position: "fixed",
           bottom: 24,
-          right: 24,
+          ...(userRole === "Supplier" || userRole === "Student" 
+            ? { left: userRole === "Student" ? 264 : 24 } // Student: drawerWidth(240) + 24, Supplier: 24
+            : { right: 24 }),
           width: 380,
           maxWidth: "calc(100vw - 48px)",
           height: minimized ? "auto" : 600,

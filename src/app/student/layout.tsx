@@ -412,47 +412,6 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
 
           <Divider sx={{ my: 2, borderColor: "rgba(255, 255, 255, 0.1)" }} />
 
-          {/* 文件夾區塊 */}
-          <Box>
-            <Typography
-              variant="caption"
-              sx={{
-                px: 2,
-                py: 1,
-                color: "text.secondary",
-                textTransform: "uppercase",
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                letterSpacing: "0.5px",
-              }}
-            >
-              你的文件夾
-            </Typography>
-            <List>
-              <ListItem disablePadding>
-                <ListItemButton
-                  sx={{
-                    borderRadius: "8px",
-                    py: 1.5,
-                    "&:hover": {
-                      bgcolor: "rgba(255, 255, 255, 0.05)",
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40, color: "text.secondary" }}>
-                    <AddIcon />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="新文件夾"
-                    primaryTypographyProps={{ fontSize: "0.95rem" }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            </List>
-          </Box>
-
-          <Divider sx={{ my: 2, borderColor: "rgba(255, 255, 255, 0.1)" }} />
-
           {/* 從這裡開始 */}
           <Box>
             <Typography

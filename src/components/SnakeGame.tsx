@@ -49,24 +49,50 @@ interface SnakeGameProps {
   onBack: () => void
 }
 
-const GRID_WIDTH = 30  // 宽度增加
-const GRID_HEIGHT = 15 // 高度减少
 const CELL_SIZE = 25
 const GAME_SPEED = 250 // 毫秒，减慢速度
 
 export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGameProps) {
+  const [gridWidth, setGridWidth] = useState(30)
+  const [gridHeight, setGridHeight] = useState(15)
+  const [pointsPerRound, setPointsPerRound] = useState(1)
+
+  // 获取游戏参数
+  useEffect(() => {
+    const fetchGameParams = async () => {
+      try {
+        const response = await fetch("/api/student/game/params");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.snake) {
+            setGridWidth(data.snake.gridWidth || 30);
+            setGridHeight(data.snake.gridHeight || 15);
+            setPointsPerRound(data.snake.pointsPerRound || 1);
+          }
+        }
+      } catch (error) {
+        console.error("获取游戏参数失败:", error);
+      }
+    };
+    fetchGameParams();
+  }, [])
   const [stage, setStage] = useState<GameStage>('countdown')
   const [countdown, setCountdown] = useState(5)
   const [currentWord, setCurrentWord] = useState<Word | null>(null)
   const [answer, setAnswer] = useState<string>('')
   const [hint, setHint] = useState<string>('') // 显示 spelling 或 word
   const [explanation, setExplanation] = useState<string>('')
-  // 初始蛇：1个三角形头部 + 2格身体 = 3格
-  const [snake, setSnake] = useState<Position[]>([
-    { x: 15, y: 7 }, // 头部
-    { x: 14, y: 7 },  // 身体1
-    { x: 13, y: 7 },  // 身体2
-  ])
+  // 初始蛇：1个三角形头部 + 2格身体 = 3格（位置会根据 gridWidth 和 gridHeight 动态计算）
+  const getInitialSnake = () => {
+    const centerX = Math.floor(gridWidth / 2);
+    const centerY = Math.floor(gridHeight / 2);
+    return [
+      { x: centerX, y: centerY }, // 头部
+      { x: centerX - 1, y: centerY },  // 身体1
+      { x: centerX - 2, y: centerY },  // 身体2
+    ];
+  };
+  const [snake, setSnake] = useState<Position[]>(getInitialSnake())
   const [direction, setDirection] = useState<Direction>('RIGHT')
   const [nextDirection, setNextDirection] = useState<Direction>('RIGHT')
   const [foods, setFoods] = useState<Food[]>([])
@@ -87,6 +113,34 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
   const snakeHistoryRef = useRef<Position[][]>([]) // 保存蛇的3步历史状态（用于还原）
   const roundStartStateRef = useRef<RoundStartState | null>(null) // 保存回合开始时的状态
   const bodyLengthRef = useRef<number>(2) // 身体长度（初始2格，不包括头部）
+
+  // 获取游戏参数
+  useEffect(() => {
+    const fetchGameParams = async () => {
+      try {
+        const response = await fetch("/api/student/game/params");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.snake) {
+            setGridWidth(data.snake.gridWidth || 30);
+            setGridHeight(data.snake.gridHeight || 15);
+            setPointsPerRound(data.snake.pointsPerRound || 1);
+            // 更新蛇的初始位置
+            const centerX = Math.floor((data.snake.gridWidth || 30) / 2);
+            const centerY = Math.floor((data.snake.gridHeight || 15) / 2);
+            setSnake([
+              { x: centerX, y: centerY },
+              { x: centerX - 1, y: centerY },
+              { x: centerX - 2, y: centerY },
+            ]);
+          }
+        }
+      } catch (error) {
+        console.error("获取游戏参数失败:", error);
+      }
+    };
+    fetchGameParams();
+  }, []);
 
   // 初始化 refs
   useEffect(() => {
@@ -123,10 +177,12 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
     setExplanation(randomWord.explanation)
     
     // 重置游戏状态，初始蛇为1个头部+2格身体
+    const centerX = Math.floor(gridWidth / 2);
+    const centerY = Math.floor(gridHeight / 2);
     const initialSnake = [
-      { x: 15, y: 7 }, // 头部
-      { x: 14, y: 7 },  // 身体1
-      { x: 13, y: 7 },  // 身体2
+      { x: centerX, y: centerY }, // 头部
+      { x: centerX - 1, y: centerY },  // 身体1
+      { x: centerX - 2, y: centerY },  // 身体2
     ]
     setSnake(initialSnake)
     setDirection('RIGHT')
@@ -153,8 +209,8 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
     const maxAttempts = 1000
     do {
       position = {
-        x: Math.floor(Math.random() * GRID_WIDTH),
-        y: Math.floor(Math.random() * GRID_HEIGHT),
+        x: Math.floor(Math.random() * gridWidth),
+        y: Math.floor(Math.random() * gridHeight),
       }
       attempts++
       if (attempts > maxAttempts) {
@@ -290,7 +346,7 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
         }
 
         // 检查撞墙
-        if (head.x < 0 || head.x >= GRID_WIDTH || head.y < 0 || head.y >= GRID_HEIGHT) {
+        if (head.x < 0 || head.x >= gridWidth || head.y < 0 || head.y >= gridHeight) {
           handleLoseLife('撞牆了！')
           return prevSnake
         }
@@ -331,7 +387,7 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
               bodyLengthRef.current += 2
               
               // 完成一轮
-              scoreRef.current += 1
+              scoreRef.current += pointsPerRound
               setScore(scoreRef.current)
               eatenCharsRef.current = []
               setEatenChars([])
@@ -548,8 +604,8 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
     const grid: (Position & { type: 'snake' | 'food' | 'empty', food?: Food })[] = []
 
     // 初始化网格（宽扁形）
-    for (let y = 0; y < GRID_HEIGHT; y++) {
-      for (let x = 0; x < GRID_WIDTH; x++) {
+    for (let y = 0; y < gridHeight; y++) {
+      for (let x = 0; x < gridWidth; x++) {
         grid.push({ x, y, type: 'empty' })
       }
     }
@@ -575,8 +631,8 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${GRID_WIDTH}, ${CELL_SIZE}px)`,
-          gridTemplateRows: `repeat(${GRID_HEIGHT}, ${CELL_SIZE}px)`,
+          gridTemplateColumns: `repeat(${gridWidth}, ${CELL_SIZE}px)`,
+          gridTemplateRows: `repeat(${gridHeight}, ${CELL_SIZE}px)`,
           gap: 0.5,
           justifyContent: 'center',
           position: 'relative',

@@ -80,7 +80,18 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, email, phoneNumber, birthday, language } = body;
+    const { name, email, dataType } = body;
+
+    // 驗證必填欄位
+    if (!name || !name.trim()) {
+      return NextResponse.json({ error: "名稱為必填欄位" }, { status: 400 });
+    }
+    if (!email || !email.trim()) {
+      return NextResponse.json({ error: "Email為必填欄位" }, { status: 400 });
+    }
+    if (!dataType || !["Student", "Admin", "Supplier"].includes(dataType)) {
+      return NextResponse.json({ error: "角色為必填欄位，且必須為 Student、Admin 或 Supplier" }, { status: 400 });
+    }
 
     // 生成唯一的 userId
     const { generateUserId } = await import("@/lib/utils");
@@ -97,21 +108,64 @@ export async function POST(request: Request) {
       }
     }
 
+    // 生成唯一的 googleId（避免唯一約束衝突）
+    let googleId: string;
+    let googleIdUnique = false;
+
+    while (!googleIdUnique) {
+      googleId = `manual_${generateUserId(25)}`;
+      const existingUser = await prisma.user.findUnique({
+        where: { googleId },
+      });
+      if (!existingUser) {
+        googleIdUnique = true;
+      }
+    }
+
+    // 創建用戶
     const user = await prisma.user.create({
       data: {
         userId: userId!,
-        name: name || null,
-        email: email || null,
-        phoneNumber: phoneNumber || null,
-        birthday: birthday ? new Date(birthday) : null,
-        language: language || null,
+        googleId: googleId!,
+        name: name.trim(),
+        email: email.trim(),
+        dataType: dataType,
       },
     });
+
+    // 根據 dataType 創建對應的資料記錄
+    if (dataType === "Student") {
+      await prisma.student.create({
+        data: {
+          userId: userId!,
+          lvocabuIDs: [],
+          lcouponIDs: [],
+          lfriendIDs: [],
+        },
+      });
+    } else if (dataType === "Supplier") {
+      await prisma.supplier.create({
+        data: {
+          userId: userId!,
+          lsuppcoIDs: [],
+        },
+      });
+    } else if (dataType === "Admin") {
+      await prisma.admin.create({
+        data: {
+          userId: userId!,
+          permissions: [],
+        },
+      });
+    }
 
     return NextResponse.json({ user });
   } catch (error: any) {
     console.error("Error creating user:", error);
-    return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
+    if (error.code === "P2002") {
+      return NextResponse.json({ error: "用戶已存在（Email 或 GoogleId 重複）" }, { status: 400 });
+    }
+    return NextResponse.json({ error: error.message || "伺服器錯誤" }, { status: 500 });
   }
 }
 

@@ -255,6 +255,7 @@ export default function GrammarPage() {
             flexDirection: "column",
             gap: 2,
             position: "relative",
+            bgcolor: "black",
           }}
           ref={chatContainerRef}
         >
@@ -267,7 +268,7 @@ export default function GrammarPage() {
                 height: "100%",
               }}
             >
-              <Typography variant="body1" color="text.secondary">
+              <Typography variant="body1" sx={{ color: "white" }}>
                 開始與文法家教對話吧！
               </Typography>
             </Box>
@@ -279,8 +280,17 @@ export default function GrammarPage() {
                     checked={selectedChats.size === chats.length && chats.length > 0}
                     indeterminate={selectedChats.size > 0 && selectedChats.size < chats.length}
                     onChange={handleSelectAll}
+                    sx={{
+                      color: "white",
+                      "&.Mui-checked": {
+                        color: "white",
+                      },
+                      "&.MuiCheckbox-indeterminate": {
+                        color: "white",
+                      },
+                    }}
                   />
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: "white" }}>
                     全選 ({selectedChats.size}/{chats.length})
                   </Typography>
                   {selectedChats.size > 0 && (
@@ -306,7 +316,9 @@ export default function GrammarPage() {
                     mr: chat.direction === "ai" ? "auto" : 0,
                     maxWidth: "70%",
                     bgcolor:
-                      chat.direction === "user" ? "primary.light" : "grey.200",
+                      chat.direction === "user" ? "primary.light" : "white",
+                    color:
+                      chat.direction === "user" ? "white" : "black",
                     border: selectedChats.has(index) ? "2px solid" : "none",
                     borderColor: selectedChats.has(index) ? "primary.main" : "transparent",
                   }}
@@ -315,7 +327,14 @@ export default function GrammarPage() {
                     <Checkbox
                       checked={selectedChats.has(index)}
                       onChange={() => handleToggleSelect(index)}
-                      sx={{ mt: -1, ml: -1 }}
+                      sx={{ 
+                        mt: -1, 
+                        ml: -1,
+                        color: "black",
+                        "&.Mui-checked": {
+                          color: "black",
+                        },
+                      }}
                       size="small"
                     />
                     <Box sx={{ flex: 1 }}>
@@ -331,7 +350,12 @@ export default function GrammarPage() {
                           size="small"
                           color={chat.direction === "user" ? "primary" : "default"}
                         />
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            color: chat.direction === "user" ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.6)"
+                          }}
+                        >
                           {new Date(chat.timestamp).toLocaleString()}
                         </Typography>
                       </Box>
@@ -340,7 +364,8 @@ export default function GrammarPage() {
                         sx={{ 
                           whiteSpace: "pre-wrap",
                           "& ol, & ul": { pl: 2 },
-                          "& li": { mb: 0.5 }
+                          "& li": { mb: 0.5 },
+                          color: chat.direction === "user" ? "white" : "black",
                         }}
                       >
                         {chat.content}
@@ -371,7 +396,7 @@ export default function GrammarPage() {
               <Paper
                 sx={{
                   p: 2,
-                  bgcolor: "grey.200",
+                  bgcolor: "white",
                   maxWidth: "70%",
                 }}
               >

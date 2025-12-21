@@ -69,6 +69,11 @@ export default function AdminUserPage() {
     isLock: false,
     image: "",
   });
+  const [formErrors, setFormErrors] = useState({
+    name: "",
+    email: "",
+    dataType: "",
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -184,21 +189,67 @@ export default function AdminUserPage() {
       isLock: false,
       image: "",
     });
+    setFormErrors({ name: "", email: "", dataType: "" });
+    setError("");
     setOpenDialog(true);
   };
 
   const handleAddSave = async () => {
+    // 重置錯誤訊息
+    setFormErrors({ name: "", email: "", dataType: "" });
+    setError("");
+
+    // 驗證必填欄位
+    const errors = {
+      name: "",
+      email: "",
+      dataType: "",
+    };
+
+    if (!formData.name || !formData.name.trim()) {
+      errors.name = "名稱為必填欄位";
+    }
+    if (!formData.email || !formData.email.trim()) {
+      errors.email = "Email為必填欄位";
+    }
+    if (!formData.dataType || !["Student", "Admin", "Supplier"].includes(formData.dataType)) {
+      errors.dataType = "角色為必填欄位，且必須為 Student、Admin 或 Supplier";
+    }
+
+    // 如果有錯誤，顯示錯誤訊息
+    if (errors.name || errors.email || errors.dataType) {
+      setFormErrors(errors);
+      return;
+    }
+
     try {
       const response = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          dataType: formData.dataType,
+        }),
       });
+      
       if (response.ok) {
         setOpenDialog(false);
+        setFormData({
+          name: "",
+          email: "",
+          phoneNumber: "",
+          birthday: "",
+          language: "",
+          dataType: "",
+          isLock: false,
+          image: "",
+        });
+        setFormErrors({ name: "", email: "", dataType: "" });
         fetchUsers();
       } else {
-        setError("新增用戶失敗");
+        const errorData = await response.json();
+        setError(errorData.error || "新增用戶失敗");
       }
     } catch (error) {
       console.error("Error adding user:", error);
@@ -232,7 +283,6 @@ export default function AdminUserPage() {
               <TableCell>User ID</TableCell>
               <TableCell>名稱</TableCell>
               <TableCell>Email</TableCell>
-              <TableCell>手機</TableCell>
               <TableCell>身分</TableCell>
               <TableCell>狀態</TableCell>
               <TableCell>LLM 使用額度</TableCell>
@@ -242,13 +292,13 @@ export default function AdminUserPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={7} align="center">
                   <CircularProgress />
                 </TableCell>
               </TableRow>
             ) : users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={7} align="center">
                   沒有資料
                 </TableCell>
               </TableRow>
@@ -258,7 +308,6 @@ export default function AdminUserPage() {
                   <TableCell>{user.userId}</TableCell>
                   <TableCell>{user.name || "-"}</TableCell>
                   <TableCell>{user.email || "-"}</TableCell>
-                  <TableCell>{user.phoneNumber || "-"}</TableCell>
                   <TableCell>
                     <Chip
                       label={user.dataType || "未選擇"}
@@ -354,7 +403,6 @@ export default function AdminUserPage() {
               <Typography><strong>User ID:</strong> {selectedUser.userId}</Typography>
               <Typography><strong>名稱:</strong> {selectedUser.name || "-"}</Typography>
               <Typography><strong>Email:</strong> {selectedUser.email || "-"}</Typography>
-              <Typography><strong>手機:</strong> {selectedUser.phoneNumber || "-"}</Typography>
               <Typography><strong>生日:</strong> {selectedUser.birthday ? new Date(selectedUser.birthday).toLocaleDateString() : "-"}</Typography>
               <Typography><strong>語言:</strong> {selectedUser.language || "-"}</Typography>
               <Typography><strong>身分:</strong> {selectedUser.dataType || "未選擇"}</Typography>
@@ -401,41 +449,36 @@ export default function AdminUserPage() {
         <DialogTitle>{selectedUser ? "編輯用戶" : "新增用戶"}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
-            <TextField
-              label="名稱"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="手機"
-              value={formData.phoneNumber}
-              onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="生日"
-              type="date"
-              value={formData.birthday}
-              onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-            />
-            <TextField
-              label="語言"
-              value={formData.language}
-              onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-              fullWidth
-            />
-            {selectedUser && (
+            {selectedUser ? (
+              // 編輯模式：顯示所有欄位
               <>
+                <TextField
+                  label="名稱"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  fullWidth
+                />
+                <TextField
+                  label="Email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  fullWidth
+                />
+                <TextField
+                  label="生日"
+                  type="date"
+                  value={formData.birthday}
+                  onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                />
+                <TextField
+                  label="語言"
+                  value={formData.language}
+                  onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                  fullWidth
+                />
                 <FormControl fullWidth>
                   <InputLabel>身分</InputLabel>
                   <Select
@@ -459,11 +502,63 @@ export default function AdminUserPage() {
                   label="鎖定帳號"
                 />
               </>
+            ) : (
+              // 新增模式：只顯示三個必填欄位
+              <>
+                <TextField
+                  label="名稱"
+                  value={formData.name}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    setFormErrors({ ...formErrors, name: "" });
+                  }}
+                  error={!!formErrors.name}
+                  helperText={formErrors.name}
+                  required
+                  fullWidth
+                />
+                <FormControl fullWidth required error={!!formErrors.dataType}>
+                  <InputLabel>角色</InputLabel>
+                  <Select
+                    value={formData.dataType}
+                    label="角色"
+                    onChange={(e) => {
+                      setFormData({ ...formData, dataType: e.target.value });
+                      setFormErrors({ ...formErrors, dataType: "" });
+                    }}
+                  >
+                    <MenuItem value="Student">Student</MenuItem>
+                    <MenuItem value="Admin">Admin</MenuItem>
+                    <MenuItem value="Supplier">Supplier</MenuItem>
+                  </Select>
+                  {formErrors.dataType && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                      {formErrors.dataType}
+                    </Typography>
+                  )}
+                </FormControl>
+                <TextField
+                  label="Email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    setFormErrors({ ...formErrors, email: "" });
+                  }}
+                  error={!!formErrors.email}
+                  helperText={formErrors.email || "無須經過驗證"}
+                  required
+                  fullWidth
+                />
+              </>
             )}
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>取消</Button>
+          <Button onClick={() => {
+            setOpenDialog(false);
+            setFormErrors({ name: "", email: "", dataType: "" });
+          }}>取消</Button>
           <Button
             onClick={selectedUser ? handleSave : handleAddSave}
             variant="contained"

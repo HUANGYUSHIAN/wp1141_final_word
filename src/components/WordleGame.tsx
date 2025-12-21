@@ -103,6 +103,23 @@ const isJapaneseAnswerMatch = (guess: string, target: string): boolean => {
 }
 
 export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack, resetGame = false }: WordleGameProps) {
+  const [winPoints, setWinPoints] = useState(10); // 默认值
+
+  // 获取游戏参数
+  useEffect(() => {
+    const fetchGameParams = async () => {
+      try {
+        const response = await fetch("/api/student/game/params");
+        if (response.ok) {
+          const data = await response.json();
+          setWinPoints(data.wordle?.winPoints || 10);
+        }
+      } catch (error) {
+        console.error("获取游戏参数失败:", error);
+      }
+    };
+    fetchGameParams();
+  }, []);
   const [targetWord, setTargetWord] = useState<Word | null>(null)
   const [targetWordText, setTargetWordText] = useState('')
   const [guesses, setGuesses] = useState<Guess[]>([])
@@ -267,7 +284,7 @@ export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack,
     if (isCorrect) {
       setGameWon(true)
       const attemptsUsed = newGuesses.length
-      const pointsEarned = 100 // 獲勝固定 100 分
+      const pointsEarned = winPoints // 使用參數化的獲勝點數
       setScore(pointsEarned)
       onGameEnd(true, pointsEarned)
     } else if (newGuesses.length >= maxAttempts) {
