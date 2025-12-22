@@ -73,6 +73,7 @@ export default function AdminSettingPage() {
     wordle: { winPoints: 10, losePoints: 0 },
     snake: { pointsPerRound: 10, maxPointsPerGame: null, gridWidth: 30, gridHeight: 15 },
     aiKing: { aiMinTime: 2, aiMaxTime: 5, aiCorrectRate: 0.9, totalQuestions: 10, scoreMultiplier: 1 },
+    test: { pointsPerCorrect: 10 },
   });
 
   useEffect(() => {
@@ -128,6 +129,9 @@ export default function AdminSettingPage() {
               aiCorrectRate: 0.9,
               totalQuestions: 10,
               scoreMultiplier: 1,
+            },
+            test: gameData.gameParams.test || {
+              pointsPerCorrect: 10,
             },
           });
         }
@@ -231,6 +235,7 @@ export default function AdminSettingPage() {
         wordle: gameParams.wordle,
         snake: gameParams.snake,
         aiKing: gameParams.aiKing,
+        test: gameParams.test,
       };
 
       const response = await fetch("/api/admin/setting/game-params", {
@@ -469,6 +474,7 @@ export default function AdminSettingPage() {
               <Tab label="猜謎遊戲 (Wordle)" />
               <Tab label="貪食蛇遊戲 (Snake)" />
               <Tab label="電腦知識王 (AI King)" />
+              <Tab label="單字測驗 (Test)" />
             </Tabs>
           </Box>
           <TabPanel value={gameTabValue} index={0}>
@@ -628,6 +634,23 @@ export default function AdminSettingPage() {
                   helperText="(玩家最高得分 - 平均AI得分) × Scalar A"
                 />
               </Box>
+            </Box>
+          </TabPanel>
+          <TabPanel value={gameTabValue} index={3}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <TextField
+                label="每答對一題獲得的點數"
+                type="number"
+                value={gameParams.test.pointsPerCorrect}
+                onChange={(e) =>
+                  setGameParams({
+                    ...gameParams,
+                    test: { ...gameParams.test, pointsPerCorrect: parseInt(e.target.value) || 0 },
+                  })
+                }
+                fullWidth
+                helperText="在單字測驗中，每答對一題獲得的點數"
+              />
             </Box>
           </TabPanel>
         </DialogContent>

@@ -35,6 +35,9 @@ export async function GET() {
           totalQuestions: 10,
           scoreMultiplier: 1,
         },
+        test: {
+          pointsPerCorrect: 10,
+        },
       });
     }
 
@@ -66,6 +69,9 @@ export async function GET() {
         aiCorrectRate: 0.9,
         totalQuestions: 10,
         scoreMultiplier: 1,
+      },
+      test: gameParams.test || {
+        pointsPerCorrect: 10,
       },
     });
   } catch (error: any) {

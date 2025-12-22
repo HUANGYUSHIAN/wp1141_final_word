@@ -29,12 +29,16 @@ import {
   TableHead,
   TableRow,
   TablePagination,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import VolumeUpIcon from '@mui/icons-material/VolumeUp'
 import SearchIcon from '@mui/icons-material/Search'
-import VisibilityIcon from '@mui/icons-material/Visibility'
+import AddIcon from '@mui/icons-material/Add'
 import { useSession, signOut } from 'next-auth/react'
 import { examiner, Question, QuestionType } from '@/lib/utils/examiner'
 import { getLanguageLabel, LANGUAGE_OPTIONS } from '@/components/LanguageSelect'
@@ -111,6 +115,8 @@ export default function TestPage() {
   const [currentWrongIndex, setCurrentWrongIndex] = useState(0)
   const [earnedPoints, setEarnedPoints] = useState<number | null>(null)
   const [totalPoints, setTotalPoints] = useState<number | null>(null)
+  const [pointsPerCorrect, setPointsPerCorrect] = useState(10)
+  const [showSetupDialog, setShowSetupDialog] = useState(false)
 
   useEffect(() => {
     if (!session) {
@@ -118,8 +124,21 @@ export default function TestPage() {
       return
     }
     fetchBrowseVocabularies(0)
+    fetchTestParams()
     setLoading(false)
   }, [router, session])
+
+  const fetchTestParams = async () => {
+    try {
+      const response = await fetch('/api/student/game/params')
+      if (response.ok) {
+        const data = await response.json()
+        setPointsPerCorrect(data.test?.pointsPerCorrect || 10)
+      }
+    } catch (error) {
+      console.error('獲取測驗參數失敗:', error)
+    }
+  }
 
   // 載入點數資訊
   useEffect(() => {
@@ -197,10 +216,12 @@ export default function TestPage() {
           })
           setSelectedLangUse(vocab.langUse)
           setSelectedLangExp(vocab.langExp)
+          setShowSetupDialog(true)
         } else {
           setSelectedVocab(vocab)
           setSelectedLangUse(vocab.langUse)
           setSelectedLangExp(vocab.langExp)
+          setShowSetupDialog(true)
         }
       }
     } catch (error) {
@@ -382,6 +403,7 @@ export default function TestPage() {
     const totalTime = Date.now() - testStartTime
     const correctCount = answers.filter(a => a.isCorrect).length
     const accuracy = questions.length > 0 ? (correctCount / questions.length) * 100 : 0
+    const earnedPointsValue = correctCount * pointsPerCorrect
 
     try {
       const response = await fetch('/api/student/game', {
@@ -392,6 +414,7 @@ export default function TestPage() {
           totalTime,
           questionCount: questions.length,
           correctCount,
+          earnedPoints: earnedPointsValue,
         }),
       })
 
@@ -526,7 +549,7 @@ export default function TestPage() {
                             color="primary"
                             title="選擇此單字本"
                           >
-                            <VisibilityIcon />
+                            <AddIcon />
                           </IconButton>
                         </TableCell>
                       </TableRow>
@@ -546,53 +569,59 @@ export default function TestPage() {
           </>
         )}
 
-        {selectedVocab && (
-          <Paper sx={{ p: 4, mt: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              設定測驗
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              已選擇單字本：{selectedVocab.name}
-            </Typography>
+        {/* 設定測驗對話框 */}
+        <Dialog open={showSetupDialog} onClose={() => setShowSetupDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>設定測驗</DialogTitle>
+          <DialogContent>
+            {selectedVocab && (
+              <Box sx={{ pt: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  已選擇單字本：{selectedVocab.name}
+                </Typography>
 
-            <TextField
-              fullWidth
-              type="number"
-              label="題目數量"
-              value={questionCount}
-              onChange={(e) => setQuestionCount(Math.max(1, parseInt(e.target.value) || 1))}
-              inputProps={{ min: 1, max: selectedVocab?.words?.length || 1 }}
-              disabled={!selectedVocab}
-              sx={{ mb: 2 }}
-              helperText={selectedVocab ? `最多可選擇 ${selectedVocab.words?.length || 0} 題` : '請先選擇單字本'}
-            />
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="題目數量"
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(Math.max(1, parseInt(e.target.value) || 1))}
+                  inputProps={{ min: 1, max: selectedVocab?.words?.length || 1 }}
+                  disabled={!selectedVocab}
+                  sx={{ mb: 2 }}
+                  helperText={selectedVocab ? `最多可選擇 ${selectedVocab.words?.length || 0} 題` : '請先選擇單字本'}
+                />
 
-            <FormControl component="fieldset" sx={{ mb: 2 }}>
-              <FormLabel component="legend">題目類型</FormLabel>
-              <RadioGroup
-                value={questionType}
-                onChange={(e) => setQuestionType(parseInt(e.target.value) as QuestionType)}
-              >
-                <FormControlLabel value={0} control={<Radio />} label="看句子選意思" />
-                <FormControlLabel value={1} control={<Radio />} label="看意思選句子" />
-                <FormControlLabel value={2} control={<Radio />} label="看句子選單字" />
-                <FormControlLabel value={3} control={<Radio />} label="聽句子選意思" />
-                <FormControlLabel value={4} control={<Radio />} label="聽句子選單字" />
-                <FormControlLabel value={5} control={<Radio />} label="混合選項" />
-              </RadioGroup>
-            </FormControl>
-
+                <FormControl component="fieldset" sx={{ mb: 2 }}>
+                  <FormLabel component="legend">題目類型</FormLabel>
+                  <RadioGroup
+                    value={questionType}
+                    onChange={(e) => setQuestionType(parseInt(e.target.value) as QuestionType)}
+                  >
+                    <FormControlLabel value={0} control={<Radio />} label="看句子選意思" />
+                    <FormControlLabel value={1} control={<Radio />} label="看意思選句子" />
+                    <FormControlLabel value={2} control={<Radio />} label="看句子選單字" />
+                    <FormControlLabel value={3} control={<Radio />} label="聽句子選意思" />
+                    <FormControlLabel value={4} control={<Radio />} label="聽句子選單字" />
+                    <FormControlLabel value={5} control={<Radio />} label="混合選項" />
+                  </RadioGroup>
+                </FormControl>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowSetupDialog(false)}>取消</Button>
             <Button
               variant="contained"
-              fullWidth
-              size="large"
-              onClick={handleStartTest}
+              onClick={() => {
+                setShowSetupDialog(false)
+                handleStartTest()
+              }}
               disabled={!selectedVocab || !selectedLangUse || !selectedLangExp || questionCount < 1}
             >
               開始測驗
             </Button>
-          </Paper>
-        )}
+          </DialogActions>
+        </Dialog>
       </Box>
     )
   }

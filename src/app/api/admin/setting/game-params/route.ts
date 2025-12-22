@@ -54,6 +54,9 @@ export async function GET() {
           totalQuestions: 10,
           scoreMultiplier: 1,
         },
+        test: {
+          pointsPerCorrect: 10,
+        },
         default: {
           basePointsMultiplier: 10,
           timeBonusEnabled: true,

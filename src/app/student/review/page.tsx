@@ -20,7 +20,7 @@ import {
   Button,
 } from '@mui/material'
 import { useSession } from 'next-auth/react'
-import VisibilityIcon from '@mui/icons-material/Visibility'
+import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import ReviewCard from '@/components/ReviewCard'
 import LanguageSelect, { LANGUAGE_OPTIONS } from '@/components/LanguageSelect'
@@ -251,9 +251,9 @@ export default function ReviewPage() {
                           size="small"
                           onClick={() => handleVocabChange(vocabulary.vocabularyId)}
                           color="primary"
-                          title="查看"
+                          title="開始複習"
                         >
-                          <VisibilityIcon />
+                          <AddIcon />
                         </IconButton>
                       </TableCell>
                     </TableRow>
