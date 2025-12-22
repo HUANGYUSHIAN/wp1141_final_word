@@ -1,4 +1,11 @@
-# 全端背單字 & 抽獎券服務平台
+# Polyglot Quest：多語學習與戰鬥結合的互動式詞彙冒險平台(全端背單字 & 抽獎券服務平台)
+
+## Public github link
+https://github.com/HUANGYUSHIAN/wp1141_final_word.git
+
+## Members
+R12631024 黃宇賢
+B11705010 孫寅鈞 
 
 ## Deploy Link
 https://word-war-app.vercel.app/
