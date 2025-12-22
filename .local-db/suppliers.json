@@ -3,15 +3,70 @@
     "id": "6928002aac827b4992289e8f",
     "userId": "S3LVOB2BCBtsujrvHn89WGxQ2O7o0V",
     "lsuppcoIDs": [
-      "tHt5RJyDpBq6R8vOMn0ZygOJq1GXe2"
+      "tHt5RJyDpBq6R8vOMn0ZygOJq1GXe2",
+      "zxvpBykQIOqOtqVcbLd9vOju6vGJjq"
     ],
     "payments": null,
-    "storeName": "五九麵館",
-    "storeLocation": "羅斯福路",
+    "storeName": "麥當勞-台北新生餐廳",
+    "storeLocation": "106臺北市大安區新生南路三段88之2號",
     "storeHours": "週一至週五",
     "storeWebsite": null,
     "createdAt": "2025-11-27T07:39:22.747Z",
-    "updatedAt": "2025-12-04T17:28:51.372Z",
-    "stores": []
+    "updatedAt": "2025-12-21T14:10:03.447Z"
+  },
+  {
+    "id": "69340f8cac65aadd6df82c6f",
+    "userId": "Lkc9IO0ez1b87VtNQVWvVUGyQqUKIE",
+    "lsuppcoIDs": [
+      "O2jSuvgAuKmU3P1GlxKY2Mk5WgRhaa"
+    ],
+    "payments": null,
+    "storeName": null,
+    "storeLocation": null,
+    "storeHours": null,
+    "storeWebsite": null,
+    "createdAt": "2025-12-06T11:12:12.379Z",
+    "updatedAt": "2025-12-06T11:55:09.636Z"
+  },
+  {
+    "id": "69475939c12c8a708a2fab70",
+    "userId": "erZruqjpslFit9gdgJIZmTf7NX0u03",
+    "lsuppcoIDs": [
+      "gG1HcIglbob1JhzPLI9HuQA75SkC3b"
+    ],
+    "payments": null,
+    "storeName": "Mc古亭",
+    "storeLocation": "106臺北市大安區羅斯福路二段45號",
+    "storeHours": null,
+    "storeWebsite": null,
+    "createdAt": "2025-12-21T02:19:36.925Z",
+    "updatedAt": "2025-12-21T02:25:14.100Z"
+  },
+  {
+    "id": "69492a9b84fa451c85fffa2d",
+    "userId": "yOVQk5suz0PMZwWmAioijsndaoOJfN",
+    "lsuppcoIDs": [],
+    "payments": null,
+    "storeName": null,
+    "storeLocation": null,
+    "storeHours": null,
+    "storeWebsite": null,
+    "createdAt": "2025-12-22T11:25:15.448Z",
+    "updatedAt": "2025-12-22T11:25:15.448Z"
+  },
+  {
+    "id": "69492b3fce4c579d62bf8cd0",
+    "userId": "uY01z6tvWOuzw7P5jIFJ6nTZ6OsW5w",
+    "lsuppcoIDs": [
+      "LrCAGGEnRAtfYJLKvTOdJ1vJBHbkLo",
+      "tXpCMaD2eBVsLnpJiH8mDEvi8MaOgf"
+    ],
+    "payments": null,
+    "storeName": "五九麵館-公館店",
+    "storeLocation": "台北市中正區羅斯福路三段286巷4弄12號",
+    "storeHours": "週一至週五早上10點至晚上10點",
+    "storeWebsite": null,
+    "createdAt": "2025-12-22T11:27:59.282Z",
+    "updatedAt": "2025-12-22T11:32:05.663Z"
   }
 ]

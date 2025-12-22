@@ -1,0 +1,9 @@
+[
+  {
+    "id": "6944c354756e75cc8a3d91d5",
+    "LLM_quota": 0.005,
+    "new_points": 100,
+    "gameParams": "{\"lottery\":{\"options\":[{\"points\":50,\"winRate\":0.05},{\"points\":100,\"winRate\":0.1},{\"points\":200,\"winRate\":0.35}],\"defaultPoints\":50,\"defaultWinRate\":0.05},\"wordle\":{\"winPoints\":10,\"losePoints\":0},\"snake\":{\"pointsPerRound\":10,\"maxPointsPerGame\":null,\"gridWidth\":30,\"gridHeight\":15},\"aiKing\":{\"aiMinTime\":2,\"aiMaxTime\":5,\"aiCorrectRate\":0.9,\"totalQuestions\":10,\"scoreMultiplier\":1},\"test\":{\"pointsPerCorrect\":10}}",
+    "updatedAt": "2025-12-22T11:58:19.474Z"
+  }
+]

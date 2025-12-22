@@ -7,6 +7,7 @@
     "paraGame": null,
     "payments": null,
     "lfriendIDs": [],
+    "chathistory": null,
     "createdAt": "2025-11-14T08:29:29.279Z",
     "updatedAt": "2025-11-14T08:29:29.279Z"
   },
@@ -15,17 +16,144 @@
     "userId": "ralNUtxLOjG94jhIGF02zZbZdgdjEF",
     "lvocabuIDs": [
       "hrtZUEQQ3B773srGsBN3uGOg2dC8Ji",
-      "c06rYbYCuKFWsnG90BSvn0EiEcVuvT"
+      "vocab_1765786694216_5cau2so4q",
+      "vocab_1765791727565_r2a21wuup",
+      "vocab_1765792980816_sq0gain2x",
+      "vocab_1766064753940_q6wg1naym"
     ],
     "lcouponIDs": [
       "tHt5RJyDpBq6R8vOMn0ZygOJq1GXe2",
       "pw0AVADYYSelqkoRrNr0QOCARL05ci",
       "J77FUtkvs3LsOk2ddnXzXNNKYfSLcJ"
     ],
-    "paraGame": "{\"points\":6024,\"gameHistory\":[{\"accuracy\":20,\"totalTime\":10125,\"questionCount\":10,\"correctCount\":2,\"earnedPoints\":218,\"timestamp\":\"2025-11-27T08:45:55.277Z\"},{\"accuracy\":0,\"totalTime\":5079,\"questionCount\":10,\"correctCount\":0,\"earnedPoints\":19,\"timestamp\":\"2025-11-27T08:49:00.300Z\"},{\"accuracy\":20,\"totalTime\":6677,\"questionCount\":10,\"correctCount\":2,\"earnedPoints\":219,\"timestamp\":\"2025-11-27T08:50:20.788Z\"},{\"accuracy\":0,\"totalTime\":8070,\"questionCount\":10,\"correctCount\":0,\"earnedPoints\":18,\"timestamp\":\"2025-11-27T08:52:48.476Z\"},{\"accuracy\":40,\"totalTime\":8344,\"questionCount\":10,\"correctCount\":4,\"earnedPoints\":418,\"timestamp\":\"2025-11-27T08:54:26.169Z\"},{\"accuracy\":10,\"totalTime\":20854,\"questionCount\":10,\"correctCount\":1,\"earnedPoints\":116,\"timestamp\":\"2025-11-27T08:58:19.847Z\"},{\"accuracy\":20,\"totalTime\":6559,\"questionCount\":10,\"correctCount\":2,\"earnedPoints\":219,\"timestamp\":\"2025-11-28T02:32:26.276Z\"},{\"accuracy\":70,\"totalTime\":38348,\"questionCount\":10,\"correctCount\":7,\"earnedPoints\":712,\"timestamp\":\"2025-11-28T02:43:22.318Z\"},{\"accuracy\":90,\"totalTime\":43181,\"questionCount\":10,\"correctCount\":9,\"earnedPoints\":911,\"timestamp\":\"2025-11-28T02:53:27.019Z\"},{\"accuracy\":40,\"totalTime\":10056,\"questionCount\":10,\"correctCount\":4,\"earnedPoints\":418,\"timestamp\":\"2025-11-28T02:53:52.749Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1000,\"timestamp\":\"2025-11-30T15:16:38.235Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1000,\"timestamp\":\"2025-12-04T17:19:20.515Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1000,\"timestamp\":\"2025-12-04T17:23:02.903Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":100,\"timestamp\":\"2025-12-04T17:25:33.876Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":2,\"timestamp\":\"2025-12-05T08:38:53.356Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1,\"timestamp\":\"2025-12-05T08:41:56.928Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":3,\"timestamp\":\"2025-12-05T09:00:37.688Z\"}],\"totalGames\":17,\"totalPoints\":6024}",
+    "paraGame": "{\"points\":6528,\"gameHistory\":[{\"accuracy\":20,\"totalTime\":10125,\"questionCount\":10,\"correctCount\":2,\"earnedPoints\":218,\"timestamp\":\"2025-11-27T08:45:55.277Z\"},{\"accuracy\":0,\"totalTime\":5079,\"questionCount\":10,\"correctCount\":0,\"earnedPoints\":19,\"timestamp\":\"2025-11-27T08:49:00.300Z\"},{\"accuracy\":20,\"totalTime\":6677,\"questionCount\":10,\"correctCount\":2,\"earnedPoints\":219,\"timestamp\":\"2025-11-27T08:50:20.788Z\"},{\"accuracy\":0,\"totalTime\":8070,\"questionCount\":10,\"correctCount\":0,\"earnedPoints\":18,\"timestamp\":\"2025-11-27T08:52:48.476Z\"},{\"accuracy\":40,\"totalTime\":8344,\"questionCount\":10,\"correctCount\":4,\"earnedPoints\":418,\"timestamp\":\"2025-11-27T08:54:26.169Z\"},{\"accuracy\":10,\"totalTime\":20854,\"questionCount\":10,\"correctCount\":1,\"earnedPoints\":116,\"timestamp\":\"2025-11-27T08:58:19.847Z\"},{\"accuracy\":20,\"totalTime\":6559,\"questionCount\":10,\"correctCount\":2,\"earnedPoints\":219,\"timestamp\":\"2025-11-28T02:32:26.276Z\"},{\"accuracy\":70,\"totalTime\":38348,\"questionCount\":10,\"correctCount\":7,\"earnedPoints\":712,\"timestamp\":\"2025-11-28T02:43:22.318Z\"},{\"accuracy\":90,\"totalTime\":43181,\"questionCount\":10,\"correctCount\":9,\"earnedPoints\":911,\"timestamp\":\"2025-11-28T02:53:27.019Z\"},{\"accuracy\":40,\"totalTime\":10056,\"questionCount\":10,\"correctCount\":4,\"earnedPoints\":418,\"timestamp\":\"2025-11-28T02:53:52.749Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1000,\"timestamp\":\"2025-11-30T15:16:38.235Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1000,\"timestamp\":\"2025-12-04T17:19:20.515Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1000,\"timestamp\":\"2025-12-04T17:23:02.903Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":100,\"timestamp\":\"2025-12-04T17:25:33.876Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":2,\"timestamp\":\"2025-12-05T08:38:53.356Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1,\"timestamp\":\"2025-12-05T08:41:56.928Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":3,\"timestamp\":\"2025-12-05T09:00:37.688Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":40,\"timestamp\":\"2025-12-22T07:29:05.166Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":40,\"timestamp\":\"2025-12-22T07:29:05.366Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":40,\"timestamp\":\"2025-12-22T07:29:05.490Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":40,\"timestamp\":\"2025-12-22T07:29:05.845Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":40,\"timestamp\":\"2025-12-22T07:29:05.989Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":40,\"timestamp\":\"2025-12-22T07:29:06.119Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":20,\"timestamp\":\"2025-12-22T07:36:17.401Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":20,\"timestamp\":\"2025-12-22T07:36:17.685Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":20,\"timestamp\":\"2025-12-22T07:36:17.814Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":40,\"timestamp\":\"2025-12-22T07:38:23.063Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":40,\"timestamp\":\"2025-12-22T07:38:23.385Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":40,\"timestamp\":\"2025-12-22T07:38:23.622Z\"},{\"accuracy\":100,\"totalTime\":100000,\"questionCount\":10,\"correctCount\":7,\"earnedPoints\":4,\"timestamp\":\"2025-12-22T08:38:20.456Z\"},{\"accuracy\":80,\"totalTime\":70161,\"questionCount\":10,\"correctCount\":8,\"earnedPoints\":80,\"timestamp\":\"2025-12-22T08:58:07.142Z\"}],\"totalGames\":31,\"totalPoints\":6528}",
     "payments": null,
     "lfriendIDs": [],
+    "chathistory": "[{\"timestamp\":1766128226715,\"content\":\"私は今日何の日本語文法を学べばいいか分かりません\",\"direction\":\"user\"},{\"timestamp\":1766128231764,\"content\":\"沒問題！這裡有幾個適合JLPT N5 等級程度的主題，你想從哪個開始？\\n\\n✅ は vs が 的差別 - 這是初學者常見的困惑，了解它們的用法能幫助你更清楚地表達主題和主詞。\\n✅ 〜ている 的真正用法 - 這個文法可以幫助你描述持續的狀態或動作，讓你的表達更豐富。\\n✅ 初學者常搞錯的助詞 - 認識正確的助詞用法能讓你的句子更加正確和自然。\\n✅ 聽得懂但說不出來的句型 - 學習常見的句型能提高你的口說能力，讓你更自信地交流。\\n\\n選一個後，我會詳細為你解釋！\",\"direction\":\"ai\"},{\"timestamp\":1766128365874,\"content\":\"我不知道今天要學什麼英文文法\",\"direction\":\"user\"},{\"timestamp\":1766128370327,\"content\":\"沒問題！這裡有幾個適合CEFR A1 等級程度的主題，你想從哪個開始？\\n\\n✅ 現在簡單式 - 這是表達日常活動的基本時態，非常適合初學者。\\n✅ 基本名詞與動詞 - 認識常用的名詞和動詞能幫助你組成簡單句子。\\n✅ 形容詞的使用 - 學習如何描述事物的特徵，讓你的表達更生動。\\n✅ 常見的疑問句 - 知道怎麼提問有助於與人交流，增強你的口說能力。\\n\\n選一個後，我會詳細為你解釋！\",\"direction\":\"ai\"},{\"timestamp\":1766128380908,\"content\":\"基\",\"direction\":\"user\"},{\"timestamp\":1766128387914,\"content\":\"好的，我們來談談「基」這個字的用法。\\n\\n1️⃣ 一句話結論  \\n👉 「基」在英文中通常是「基礎」的意思，可以用來表達某事的基本部分。\\n\\n2️⃣ 使用時機  \\n「基」這個字常用於描述事物的基本概念或根本的部分。例如：學習一門語言的基礎知識。\\n\\n3️⃣ 對比例  \\n❌ 「基」和「基礎」是不同的詞，容易混淆。  \\n✅ 正確的用法是「基礎」表示基本的部分，例如「基礎知識」。\\n\\n4️⃣ 例句  \\n[例句1] The basis of learning English is vocabulary.（學習英文的基礎是詞彙。）  \\n[例句2] We need a strong basis for our project.（我們的專案需要堅實的基礎。）\\n\\n5️⃣ 小技巧 / 常見錯誤  \\n👉 記住「基礎」是指事物的根本部分，將它與其他相似的詞區分開來，這樣可以避免混淆。\",\"direction\":\"ai\"},{\"timestamp\":1766128935857,\"content\":\"私は今日何の日本語文法を学べばいいか分かりません\",\"direction\":\"user\"},{\"timestamp\":1766128941657,\"content\":\"沒問題！這裡有幾個適合JLPT N4 等級程度的主題，你想從哪個開始？\\n\\n✅ 「は vs が 的差別」 - 理解這兩個助詞的用法，可以幫助你更清楚地表達句子的主題和主詞。  \\n✅ 「〜ている 的真正用法」 - 學會這個文法可以形容持續的狀態或動作，讓你的表達更生動。  \\n✅ 「初學者常搞錯的助詞」 - 認識常見的助詞用法，能讓你的句子更加正確和自然。  \\n✅ 「聽得懂但說不出來的句型」 - 學會一些實用的句型，可以提升你的口說能力，讓你更自信地與人交流。  \\n\\n選一個後，我會詳細為你解釋！\",\"direction\":\"ai\"},{\"timestamp\":1766128948609,\"content\":\"「初學者常搞錯的助詞」\",\"direction\":\"user\"},{\"timestamp\":1766128956460,\"content\":\"好的，我們來探討「初學者常搞錯的助詞」這個主題。\\n\\n1️⃣ 一句話結論  \\n👉 助詞「は」和「が」是日本語中最常見且容易混淆的兩個助詞，它們有不同的用法和功能。\\n\\n2️⃣ 使用時機  \\n「は」用來標示句子的主題，強調主題的內容；而「が」則用來標示句子的主詞，通常用於新資訊或特定的主體。\\n\\n3️⃣ 對比例  \\n❌ 錯誤用法：我用「が」來表示主題，例如：「私は学生が」。  \\n✅ 正確用法：我應該用「は」來表示主題，例如：「私は学生です」。\\n\\n4️⃣ 例句  \\n[例句1] 彼は日本人です。（他是日本人。）  \\n[例句2] 猫が好きです。（我喜歡貓。）\\n\\n5️⃣ 小技巧 / 常見錯誤  \\n👉 記住「は」是用來說明主題，像是在介紹某人或某事，而「が」則是用來強調主體或新資訊。可以想像成「は」是背景，讓聽者了解主題；而「が」則是突出的焦點，讓聽者注意到特定的事物。\\n\\n希望這些解釋能幫助你更好地理解這兩個助詞的用法！如果有任何問題，隨時可以問我！\",\"direction\":\"ai\"},{\"timestamp\":1766134589788,\"content\":\"日文自動與他動詞好難區分喔\",\"direction\":\"user\"},{\"timestamp\":1766134599662,\"content\":\"好的，讓我們來詳細探討「日文自動詞與他動詞」的區分。\\n\\n1️⃣ 一句話結論  \\n👉 自動詞表示動作的主體自己進行，而他動詞則需要一個對象來接受動作。\\n\\n2️⃣ 使用時機  \\n自動詞通常在描述主體的狀態或變化時使用，而他動詞則用於強調某個動作是由主體對其他事物進行的。\\n\\n3️⃣ 對比例  \\n❌ 錯誤用法：我用自動詞來表達他動詞的意思，例如：「ドアが開ける。」（門開了。）  \\n✅ 正確用法：應用自動詞來描述狀態，例如：「ドアが開く。」（門打開了。） \\n\\n4️⃣ 例句  \\n[例句1] 窓が閉まる。（窗戶關閉了。）【自動詞】  \\n[例句2] 私は窓を閉める。（我關上窗戶。）【他動詞】\\n\\n5️⃣ 小技巧 / 常見錯誤  \\n👉 記住自動詞通常不需要直接受詞，而他動詞必須有受詞。例如，當你說「開」的時候，如果是「門開了」，那是自動詞；但如果是「我打開門」，那就是他動詞。可以想像自動詞像是一個人獨自行動，他動詞則是幫助其他事物行動。\\n\\n希望這些解釋可以幫助你更好地理解自動詞與他動詞的區分！如果有任何問題，隨時可以問我！\",\"direction\":\"ai\"}]",
     "createdAt": "2025-11-15T11:40:46.167Z",
-    "updatedAt": "2025-12-05T09:00:37.695Z"
+    "updatedAt": "2025-12-22T08:58:07.143Z"
+  },
+  {
+    "id": "69340e98ac65aadd6df82c6d",
+    "userId": "Mj43rXbM2l7Gh0paLU6s59uJrRQ4Lg",
+    "lvocabuIDs": [
+      "c06rYbYCuKFWsnG90BSvn0EiEcVuvT"
+    ],
+    "lcouponIDs": [],
+    "paraGame": "{\"points\":1,\"gameHistory\":[{\"accuracy\":70,\"totalTime\":97616,\"questionCount\":10,\"correctCount\":7,\"earnedPoints\":700,\"timestamp\":\"2025-12-06T12:08:09.479Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":1,\"timestamp\":\"2025-12-06T12:09:58.978Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":100,\"timestamp\":\"2025-12-06T12:13:09.989Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":100,\"timestamp\":\"2025-12-06T12:19:03.537Z\"}],\"totalGames\":4,\"totalPoints\":201}",
+    "payments": null,
+    "lfriendIDs": [],
+    "chathistory": null,
+    "createdAt": "2025-12-06T11:08:08.898Z",
+    "updatedAt": "2025-12-06T12:29:43.517Z"
+  },
+  {
+    "id": "693464690512fe4fae1ab606",
+    "userId": "4E8A8p1VlZbet3rF0jzS2lOWI0q2Bo",
+    "lvocabuIDs": [
+      "c06rYbYCuKFWsnG90BSvn0EiEcVuvT"
+    ],
+    "lcouponIDs": [
+      "O2jSuvgAuKmU3P1GlxKY2Mk5WgRhaa"
+    ],
+    "paraGame": "{\"points\":560,\"gameHistory\":[{\"accuracy\":70,\"totalTime\":48100,\"questionCount\":10,\"correctCount\":7,\"earnedPoints\":710,\"timestamp\":\"2025-12-06T17:17:31.618Z\"},{\"accuracy\":90,\"totalTime\":262946,\"questionCount\":10,\"correctCount\":9,\"earnedPoints\":900,\"timestamp\":\"2025-12-06T17:24:26.496Z\"}],\"totalGames\":2,\"totalPoints\":1610}",
+    "payments": null,
+    "lfriendIDs": [],
+    "chathistory": null,
+    "createdAt": "2025-12-06T17:14:17.990Z",
+    "updatedAt": "2025-12-06T17:36:53.920Z"
+  },
+  {
+    "id": "6935a3b9cf7198d8cd52e5d9",
+    "userId": "D0oE6ePFoRYHGpJ5DKR81wpworOMYD",
+    "lvocabuIDs": [
+      "c06rYbYCuKFWsnG90BSvn0EiEcVuvT"
+    ],
+    "lcouponIDs": [],
+    "paraGame": "{\"points\":2,\"gameHistory\":[{\"accuracy\":50,\"totalTime\":90959,\"questionCount\":10,\"correctCount\":5,\"earnedPoints\":502,\"timestamp\":\"2025-12-07T16:09:43.643Z\"}],\"totalGames\":1,\"totalPoints\":502}",
+    "payments": null,
+    "lfriendIDs": [],
+    "chathistory": null,
+    "createdAt": "2025-12-07T15:56:41.444Z",
+    "updatedAt": "2025-12-07T16:10:31.427Z"
+  },
+  {
+    "id": "6935a3e2cf7198d8cd52e5da",
+    "userId": "ERj5J5viSVjQlSXEGrhShupliX522x",
+    "lvocabuIDs": [],
+    "lcouponIDs": [],
+    "paraGame": null,
+    "payments": null,
+    "lfriendIDs": [],
+    "chathistory": null,
+    "createdAt": "2025-12-07T15:57:22.497Z",
+    "updatedAt": "2025-12-07T15:57:22.497Z"
+  },
+  {
+    "id": "693656069e466e3dcb994e8b",
+    "userId": "WtSWCWHLGktTwfVhPKYfIlp92lAAWb",
+    "lvocabuIDs": [
+      "c06rYbYCuKFWsnG90BSvn0EiEcVuvT"
+    ],
+    "lcouponIDs": [],
+    "paraGame": "{\"points\":0,\"gameHistory\":[{\"accuracy\":60,\"totalTime\":112256,\"questionCount\":10,\"correctCount\":6,\"earnedPoints\":600,\"timestamp\":\"2025-12-08T04:55:06.972Z\"}],\"totalGames\":1,\"totalPoints\":600}",
+    "payments": null,
+    "lfriendIDs": [],
+    "chathistory": null,
+    "createdAt": "2025-12-08T04:37:26.348Z",
+    "updatedAt": "2025-12-08T04:57:44.385Z"
+  },
+  {
+    "id": "693798bdd27b58f69776a536",
+    "userId": "6Y57uFxA1ZXaMxUv4I7nSxtskhtlZT",
+    "lvocabuIDs": [],
+    "lcouponIDs": [],
+    "paraGame": null,
+    "payments": null,
+    "lfriendIDs": [],
+    "chathistory": null,
+    "createdAt": "2025-12-09T03:34:21.044Z",
+    "updatedAt": "2025-12-09T03:34:21.044Z"
+  },
+  {
+    "id": "694416befd13913b4ba8c795",
+    "userId": "p28nEn4IUmBDa1bH8ILCxbW3R3tt0S",
+    "lvocabuIDs": [
+      "o2WxNzkgDorJ1jSReYzVHAM3TAOKyC"
+    ],
+    "lcouponIDs": [],
+    "paraGame": null,
+    "payments": null,
+    "lfriendIDs": [],
+    "chathistory": "[]",
+    "createdAt": "2025-12-18T14:59:10.535Z",
+    "updatedAt": "2025-12-19T07:28:22.952Z"
+  },
+  {
+    "id": "694819024479de2dbd1e8724",
+    "userId": "cMbCvXr3fsEhNJLQF8dJpXfIAjnG3E",
+    "lvocabuIDs": [],
+    "lcouponIDs": [],
+    "paraGame": null,
+    "payments": null,
+    "lfriendIDs": [],
+    "chathistory": null,
+    "createdAt": "2025-12-21T15:57:54.257Z",
+    "updatedAt": "2025-12-21T15:57:54.257Z"
+  },
+  {
+    "id": "69492cd8ce4c579d62bf8cd5",
+    "userId": "6755JrQ3JIjlSUF5DgeyIS8c7IJiwx",
+    "lvocabuIDs": [
+      "hHSoFbAHlLd96VNxkjdyNiEQbBrPUk",
+      "vocab_1766403409797_bmjs49qzq"
+    ],
+    "lcouponIDs": [],
+    "paraGame": "{\"points\":0,\"gameHistory\":[{\"accuracy\":0,\"totalTime\":2354,\"questionCount\":1,\"correctCount\":0,\"earnedPoints\":0,\"timestamp\":\"2025-12-22T11:48:00.580Z\"},{\"accuracy\":80,\"totalTime\":18803,\"questionCount\":10,\"correctCount\":8,\"earnedPoints\":80,\"timestamp\":\"2025-12-22T11:48:56.656Z\"},{\"accuracy\":100,\"totalTime\":10000,\"questionCount\":1,\"correctCount\":1,\"earnedPoints\":10,\"timestamp\":\"2025-12-22T11:50:54.829Z\"},{\"accuracy\":100,\"totalTime\":100000,\"questionCount\":10,\"correctCount\":8,\"earnedPoints\":10,\"timestamp\":\"2025-12-22T11:52:44.623Z\"}],\"totalGames\":4,\"totalPoints\":100}",
+    "payments": null,
+    "lfriendIDs": [],
+    "chathistory": "[{\"timestamp\":1766404015425,\"content\":\"我不知道今天要學什麼英文文法\",\"direction\":\"user\"},{\"timestamp\":1766404021006,\"content\":\"沒問題！這裡有幾個適合CEFR A1 等級程度的主題，你想從哪個開始？\\n\\n✅ 現在簡單式 - 這是表達日常動作的基本時態，非常實用。\\n✅ 基本名詞與動詞 - 理解名詞和動詞的使用是學習英語的基礎。\\n✅ 常用形容詞 - 學習形容詞可以幫助你描述事物，讓句子更生動。\\n✅ 單數與複數名詞 - 知道如何變化名詞的單複數形式對於基本交流很重要。\\n\\n選一個後，我會詳細為你解釋！\",\"direction\":\"ai\"},{\"timestamp\":1766404025613,\"content\":\"現在簡單式\",\"direction\":\"user\"},{\"timestamp\":1766404031677,\"content\":\"📘 現在簡單式教學\\n\\n1️⃣ 一句話結論  \\n👉 現在簡單式用來表達經常發生的動作或事實。\\n\\n2️⃣ 使用時機  \\n當我們想要描述日常生活中的常態行為、習慣或事實時，就會使用現在簡單式。例如：“我每天吃早餐。”或“水是液體。”\\n\\n3️⃣ 對比例  \\n❌ 我昨天去商店。  \\n✅ 我每天去商店。  \\n（這裡的「每天」表示習慣，使用現在簡單式。）\\n\\n4️⃣ 例句  \\n- 我每天走路上學。 (I walk to school every day.)  \\n- 她喜歡閱讀書籍。 (She likes to read books.)\\n\\n5️⃣ 小技巧 / 常見錯誤  \\n👉 記住：當主詞是第三人稱單數（如 he, she, it）時，動詞要加 -s 或 -es。例如：He walks, She watches。這是常見的錯誤，記得檢查主詞哦！\",\"direction\":\"ai\"},{\"timestamp\":1766404041112,\"content\":\"換一個文法\",\"direction\":\"user\"},{\"timestamp\":1766404048373,\"content\":\"📘 形容詞教學\\n\\n1️⃣ 一句話結論  \\n👉 形容詞用來描述名詞，讓句子更生動。\\n\\n2️⃣ 使用時機  \\n當我們想要描述人、事物或地方的特徵時，就會使用形容詞。例如：顏色、大小、性格等。\\n\\n3️⃣ 對比例  \\n❌ 他是一個快樂的人。 (He is a happy person.)  \\n✅ 他是一個人。 (He is a person.)  \\n（這裡的「快樂」是形容詞，描述這個人的性格。）\\n\\n4️⃣ 例句  \\n- 這個蘋果是紅色的。(This apple is red.)  \\n- 她的裙子很漂亮。(Her dress is beautiful.)\\n\\n5️⃣ 小技巧 / 常見錯誤  \\n👉 記住，形容詞通常放在名詞前面。例如：big dog（大狗）、blue sky（藍天）。這樣可以幫助你清楚描述事物！\",\"direction\":\"ai\"}]",
+    "createdAt": "2025-12-22T11:34:48.049Z",
+    "updatedAt": "2025-12-22T11:53:40.494Z"
   }
 ]
