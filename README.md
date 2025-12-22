@@ -56,6 +56,12 @@ https://word-war-app.vercel.app/
 
 ## 🚀 快速開始
 
+### 前置需求
+
+- Node.js 18+ 
+- npm 或 yarn
+- MongoDB（如果使用 MongoDB 模式，可選）
+
 ### 1. 安裝依賴
 
 ```bash
@@ -64,34 +70,61 @@ npm install
 
 ### 2. 設定環境變數
 
-創建 `.env` 文件並填入以下內容：
+複製 `.env.example` 文件為 `.env`：
 
-```env
-# Database
-DATABASE_URL="mongodb://localhost:27017/word-app"
-# 或使用 MongoDB Atlas
-# DATABASE_URL="mongodb+srv://username:password@cluster.mongodb.net/word-app"
+```bash
+# Windows
+copy .env.example .env
 
-# Google OAuth
-GOOGLE_CLIENT_ID="your-google-client-id"
-GOOGLE_CLIENT_SECRET="your-google-client-secret"
-
-# NextAuth
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-nextauth-secret-key-here"
-
-# 本地資料庫（可選）
-DATABASE_local="false"
+# Linux/macOS
+cp .env.example .env
 ```
 
+然後編輯 `.env` 文件，填入必要的環境變數（詳見下方說明）。
+
+**⚠️ 重要：`.env` 文件包含敏感資訊，絕對不要提交到 Git！**
+
+#### 環境變數說明
+
+**必填項目：**
+
+- `DATABASE_local`: 設定為 `"true"` 使用本地 JSON 資料庫（推薦開發用），或 `"false"` 使用 MongoDB
+- `NEXTAUTH_URL`: 應用程式基礎 URL（開發環境：`http://localhost:3000`）
+- `NEXTAUTH_SECRET`: 用於加密 JWT token 的密鑰（至少 32 字符）
+
+**選填項目（根據功能需求）：**
+
+- `DATABASE_URL`: MongoDB 連接字串（僅在 `DATABASE_local=false` 時需要）
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: Google OAuth 憑證（用於 Google 登入）
+- `GOOGLE_MAPS_API_KEY`: Google Maps API Key（用於店家地址跳轉）
+- `OPENAI_API_KEY`: OpenAI API Key（用於 AI 功能）
+- PostHog 相關變數（用於使用者行為追蹤）
+
+詳細說明請參考 `.env.example` 文件中的註解。
+
 ### 3. 初始化資料庫
+
+#### 選項 A：使用本地資料庫（推薦開發用）
+
+```bash
+# 初始化本地資料庫文件
+npm run db:init-local
+
+# 建立測試資料（包含測試用戶、單字本、優惠券等）
+npm run db:seed-test-data
+```
+
+#### 選項 B：使用 MongoDB
 
 ```bash
 # 生成 Prisma Client
 npm run db:generate
 
-# 推送 schema 到資料庫
+# 推送 schema 到 MongoDB
 npm run db:push
+
+# 建立測試資料
+npm run db:seed-test-data
 ```
 
 ### 4. 啟動開發伺服器
@@ -101,6 +134,19 @@ npm run dev
 ```
 
 訪問 [http://localhost:3000](http://localhost:3000)
+
+### 5. 測試登入
+
+執行 `npm run db:seed-test-data` 後，會顯示測試帳號的 User ID。使用方式：
+
+1. 前往登入頁面：http://localhost:3000/login
+2. 選擇「測試登入」
+3. 輸入顯示的 User ID 進行登入
+
+測試帳號包含：
+- **學生帳號**：可測試單字本、遊戲、優惠券等功能
+- **廠商帳號**：可測試優惠券管理、店鋪管理等功能
+- **管理員帳號**：可測試用戶管理、單字本管理等功能
 
 ## 📖 使用說明
 
@@ -137,7 +183,23 @@ npm run dev
 
 ## 🛠️ 資料庫管理腳本
 
-### 創建測試用戶
+### 建立測試資料（推薦）
+
+```bash
+# 建立完整的測試資料（包含用戶、單字本、優惠券、店鋪等）
+npm run db:seed-test-data
+```
+
+此腳本會建立：
+- 測試用戶（學生、廠商、管理員各一個）
+- 3 個範例單字本（TOEIC 基礎單字、JLPT N5 日文單字、餐廳用餐英文）
+- 3 個範例優惠券
+- 2 個範例分店
+- 系統參數
+
+執行後會顯示所有測試帳號的 User ID，可用於測試登入。
+
+### 創建單一測試用戶
 
 ```bash
 # 使用預設值創建
