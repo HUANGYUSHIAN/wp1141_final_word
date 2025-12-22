@@ -32,7 +32,7 @@ interface WordleGameProps {
   words: Word[]
   langUse: string
   langExp: string
-  onGameEnd: (won: boolean, score: number) => void
+  onGameEnd: (won: boolean, score: number, errors?: any) => void
   onBack: () => void
   resetGame?: boolean // 是否重置遊戲（選擇新單字）
 }
@@ -131,6 +131,8 @@ export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack,
   const [score, setScore] = useState(0)
   const [kanaMode, setKanaMode] = useState<'hiragana' | 'katakana'>('hiragana')
   const resetGameProcessedRef = useRef(false)
+  const [countdown, setCountdown] = useState(5)
+  const [showCountdown, setShowCountdown] = useState(true)
   
   // 使用 sessionStorage 來保存是否已經初始化，避免離開頁面後回來時重新選擇單字
   const getStorageKey = () => `wordle-game-${langUse}-${langExp}`
@@ -207,8 +209,30 @@ export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack,
     // 標記為已初始化
     setInitialized()
     resetGameProcessedRef.current = false // 重置標記，以便下次重置時可以再次處理
+    
+    // 重置倒数（首次初始化或重置时）
+    if (resetGame || !isInitialized()) {
+      setShowCountdown(true)
+      setCountdown(5)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words, langUse, resetGame])
+  
+  // 倒数计时
+  useEffect(() => {
+    if (!showCountdown || countdown <= 0) {
+      if (countdown === 0) {
+        setShowCountdown(false)
+      }
+      return
+    }
+    
+    const timer = setTimeout(() => {
+      setCountdown(countdown - 1)
+    }, 1000)
+    
+    return () => clearTimeout(timer)
+  }, [showCountdown, countdown])
 
   const evaluateGuess = (guess: string, target: string): LetterState[] => {
     const states: LetterState[] = new Array(guess.length).fill('absent')
@@ -286,10 +310,14 @@ export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack,
       const attemptsUsed = newGuesses.length
       const pointsEarned = winPoints // 使用參數化的獲勝點數
       setScore(pointsEarned)
-      onGameEnd(true, pointsEarned)
+      onGameEnd(true, pointsEarned, null)
     } else if (newGuesses.length >= maxAttempts) {
       setGameLost(true)
-      onGameEnd(false, 0)
+      // 传递错误信息：正确答案和目标单词
+      onGameEnd(false, 0, {
+        correctAnswer: isJapanese ? targetWordText : targetWordText.toUpperCase(),
+        targetWord: targetWord,
+      })
     }
   }
 
@@ -372,6 +400,42 @@ export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack,
   const currentRow = guesses.length
   const emptyRows = maxAttempts - guesses.length - (gameWon || gameLost ? 0 : 1)
   const isJapanese = isJapaneseLanguage(langUse)
+
+  // 倒数画面
+  if (showCountdown && countdown > 0) {
+    return (
+      <Box sx={{ mt: 4, maxWidth: 600, mx: 'auto' }}>
+        <Paper sx={{ p: 4 }}>
+          {/* 正上方显示倒数 */}
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Typography variant="h1" color="primary">
+              {countdown}
+            </Typography>
+          </Box>
+          
+          {/* 游戏规则 */}
+          <Card sx={{ mb: 3, bgcolor: 'info.light' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                遊戲規則
+              </Typography>
+              <Typography variant="body1" component="div" sx={{ mt: 2 }}>
+                <Box component="ul" sx={{ pl: 2 }}>
+                  <li>猜謎遊戲（Wordle 風格）</li>
+                  <li>根據提示猜出正確的單字</li>
+                  <li>有 {maxAttempts} 次猜測機會</li>
+                  <li>綠色 = 字母位置正確</li>
+                  <li>黃色 = 字母存在但位置錯誤</li>
+                  <li>灰色 = 字母不存在</li>
+                  <li>使用鍵盤或螢幕鍵盤輸入</li>
+                </Box>
+              </Typography>
+            </CardContent>
+          </Card>
+        </Paper>
+      </Box>
+    )
+  }
 
   return (
     <Box>
@@ -653,8 +717,35 @@ export default function WordleGame({ words, langUse, langExp, onGameEnd, onBack,
 
           {(gameWon || gameLost) && (
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+              <Button variant="contained" onClick={() => {
+                setShowCountdown(true)
+                setCountdown(5)
+                setGuesses([])
+                setCurrentGuess('')
+                setGameWon(false)
+                setGameLost(false)
+                setLetterStates({})
+                setScore(0)
+                clearInitialized()
+                // 重新选择单词
+                const availableWords = words.filter((w: Word) => w.word && w.word.trim().length > 0)
+                if (availableWords.length > 0) {
+                  const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)]
+                  const isJapanese = isJapaneseLanguage(langUse)
+                  let wordText: string
+                  if (isJapanese && randomWord.spelling && randomWord.spelling.trim()) {
+                    wordText = randomWord.spelling.trim()
+                  } else {
+                    wordText = isJapanese ? randomWord.word.trim() : randomWord.word.trim().toLowerCase()
+                  }
+                  setTargetWord(randomWord)
+                  setTargetWordText(wordText)
+                }
+              }} sx={{ mr: 2 }}>
+                再玩一次
+              </Button>
               <Button variant="outlined" onClick={onBack}>
-                返回
+                返回遊戲選擇
               </Button>
             </Box>
           )}

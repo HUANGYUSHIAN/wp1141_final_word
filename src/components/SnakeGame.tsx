@@ -9,7 +9,12 @@ import {
   Alert,
   Card,
   CardContent,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from '@mui/material'
+import LightbulbIcon from '@mui/icons-material/Lightbulb'
+import { examiner, Question, QuestionType } from '@/lib/utils/examiner'
 
 interface Word {
   id?: string
@@ -25,37 +30,31 @@ interface Position {
   y: number
 }
 
-interface Food {
+type ItemType = 'lightbulb' | 'optionA' | 'optionB' | 'optionC' | 'optionD'
+
+interface GameItem {
   position: Position
-  char: string
-  isAnswer: boolean
-  index: number // 在答案中的索引位置
+  type: ItemType
+  optionIndex?: number // 对于选项，记录是第几个选项（0-3对应A-D）
 }
 
 type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'
-type GameStage = 'countdown' | 'playing' | 'paused' | 'roundCountdown' | 'gameOver'
-
-interface RoundStartState {
-  snake: Position[]
-  foods: Food[]
-  eatenChars: string[]
-  direction: Direction
-}
+type GameStage = 'countdown' | 'playing' | 'paused' | 'gameOver'
 
 interface SnakeGameProps {
   words: Word[]
   langUse: string
-  onGameEnd: (score: number) => void
+  onGameEnd: (score: number, totalPoints?: number, errors?: any) => void
   onBack: () => void
 }
 
 const CELL_SIZE = 25
-const GAME_SPEED = 250 // 毫秒，减慢速度
+const GAME_SPEED = 250 // 毫秒
 
 export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGameProps) {
   const [gridWidth, setGridWidth] = useState(30)
   const [gridHeight, setGridHeight] = useState(15)
-  const [pointsPerRound, setPointsPerRound] = useState(1)
+  const [pointsPerRound, setPointsPerRound] = useState(10)
 
   // 获取游戏参数
   useEffect(() => {
@@ -67,7 +66,7 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
           if (data.snake) {
             setGridWidth(data.snake.gridWidth || 30);
             setGridHeight(data.snake.gridHeight || 15);
-            setPointsPerRound(data.snake.pointsPerRound || 1);
+            setPointsPerRound(data.snake.pointsPerRound || 10);
           }
         }
       } catch (error) {
@@ -76,78 +75,133 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
     };
     fetchGameParams();
   }, [])
+
   const [stage, setStage] = useState<GameStage>('countdown')
   const [countdown, setCountdown] = useState(5)
-  const [currentWord, setCurrentWord] = useState<Word | null>(null)
-  const [answer, setAnswer] = useState<string>('')
-  const [hint, setHint] = useState<string>('') // 显示 spelling 或 word
-  const [explanation, setExplanation] = useState<string>('')
-  // 初始蛇：1个三角形头部 + 2格身体 = 3格（位置会根据 gridWidth 和 gridHeight 动态计算）
-  const getInitialSnake = () => {
+  
+  // 贪食蛇状态
+  const getInitialSnake = useCallback(() => {
     const centerX = Math.floor(gridWidth / 2);
     const centerY = Math.floor(gridHeight / 2);
     return [
-      { x: centerX, y: centerY }, // 头部
-      { x: centerX - 1, y: centerY },  // 身体1
-      { x: centerX - 2, y: centerY },  // 身体2
+      { x: centerX, y: centerY }, // 头部（三角形）
+      { x: centerX - 1, y: centerY }, // 身体1（方形）
+      { x: centerX - 2, y: centerY }, // 身体2（方形）
     ];
-  };
+  }, [gridWidth, gridHeight])
+
   const [snake, setSnake] = useState<Position[]>(getInitialSnake())
   const [direction, setDirection] = useState<Direction>('RIGHT')
   const [nextDirection, setNextDirection] = useState<Direction>('RIGHT')
-  const [foods, setFoods] = useState<Food[]>([])
+  
+  // 游戏物品（电灯icon + 4个选项）
+  const [items, setItems] = useState<GameItem[]>([])
+  
+  // 题目相关
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
+  const [lightbulbEaten, setLightbulbEaten] = useState(false) // 是否已吃电灯icon
+  const [showQuestionDialog, setShowQuestionDialog] = useState(false)
+  const [questionDialogTimer, setQuestionDialogTimer] = useState<NodeJS.Timeout | null>(null)
+  const [questionDialogCountdown, setQuestionDialogCountdown] = useState(5) // 题目弹窗倒数
+  
+  // 游戏状态
   const [score, setScore] = useState(0)
-  const [lives, setLives] = useState(3)
-  const [eatenChars, setEatenChars] = useState<string[]>([]) // 已吃掉的字符，按顺序
   const [gameOverMessage, setGameOverMessage] = useState<string>('')
-  const [wrongWords, setWrongWords] = useState<string[]>([]) // 记录拼错的单字
+  const [totalPoints, setTotalPoints] = useState<number | null>(null)
   
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
-  const foodsRef = useRef<Food[]>([])
-  const eatenCharsRef = useRef<string[]>([])
-  const answerRef = useRef<string>('')
-  const livesRef = useRef<number>(3)
-  const scoreRef = useRef<number>(0)
-  const wrongWordsRef = useRef<string[]>([])
-  const snakeHistoryRef = useRef<Position[][]>([]) // 保存蛇的3步历史状态（用于还原）
-  const roundStartStateRef = useRef<RoundStartState | null>(null) // 保存回合开始时的状态
-  const bodyLengthRef = useRef<number>(2) // 身体长度（初始2格，不包括头部）
+  const isPausedRef = useRef(false)
 
-  // 获取游戏参数
-  useEffect(() => {
-    const fetchGameParams = async () => {
-      try {
-        const response = await fetch("/api/student/game/params");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.snake) {
-            setGridWidth(data.snake.gridWidth || 30);
-            setGridHeight(data.snake.gridHeight || 15);
-            setPointsPerRound(data.snake.pointsPerRound || 1);
-            // 更新蛇的初始位置
-            const centerX = Math.floor((data.snake.gridWidth || 30) / 2);
-            const centerY = Math.floor((data.snake.gridHeight || 15) / 2);
-            setSnake([
-              { x: centerX, y: centerY },
-              { x: centerX - 1, y: centerY },
-              { x: centerX - 2, y: centerY },
-            ]);
-          }
+  // 计算可用空格数（非边界、非蛇身）
+  const getAvailableSpaces = useCallback((currentSnake: Position[]): number => {
+    let count = 0
+    for (let y = 1; y < gridHeight - 1; y++) {
+      for (let x = 1; x < gridWidth - 1; x++) {
+        // 检查是否在蛇身上
+        if (!currentSnake.some(seg => seg.x === x && seg.y === y)) {
+          count++
         }
-      } catch (error) {
-        console.error("获取游戏参数失败:", error);
       }
-    };
-    fetchGameParams();
-  }, []);
+    }
+    return count
+  }, [gridWidth, gridHeight])
 
-  // 初始化 refs
-  useEffect(() => {
-    livesRef.current = 3
-    scoreRef.current = 0
-    bodyLengthRef.current = 2
-  }, [])
+  // 生成随机位置（不与蛇身重叠，不在边界）
+  const generateRandomPosition = useCallback((excludePositions: Position[]): Position | null => {
+    let attempts = 0
+    const maxAttempts = 1000
+    while (attempts < maxAttempts) {
+      const position = {
+        x: Math.floor(Math.random() * gridWidth),
+        y: Math.floor(Math.random() * gridHeight),
+      }
+      // 检查是否在边界（边界是 x=0, x=gridWidth-1, y=0, y=gridHeight-1）
+      if (position.x > 0 && position.x < gridWidth - 1 && 
+          position.y > 0 && position.y < gridHeight - 1 &&
+          !excludePositions.some(pos => pos.x === position.x && pos.y === position.y)) {
+        return position
+      }
+      attempts++
+    }
+    return null
+  }, [gridWidth, gridHeight])
+
+  // 生成新题目和物品
+  const generateNewQuestion = useCallback(() => {
+    if (words.length === 0) {
+      alert('單字本中沒有單字')
+      onBack()
+      return
+    }
+
+    // 随机选择一个单词
+    const randomWord = words[Math.floor(Math.random() * words.length)]
+    
+    // 随机选择题目类型：0（看句子選意思）、1（看意思選句子）、2（看句子選單字）
+    const questionType = Math.floor(Math.random() * 3) as QuestionType
+    
+    // 使用 examiner 生成题目（传入整个单词列表，以便生成选项）
+    const question = examiner(words, questionType)
+    if (!question) {
+      // 如果生成失败，尝试其他单词
+      generateNewQuestion()
+      return
+    }
+    
+    setCurrentQuestion(question)
+    setLightbulbEaten(false)
+    
+    // 生成5个位置：1个电灯icon + 4个选项（A/B/C/D）
+    const excludePositions: Position[] = [...snake]
+    const newItems: GameItem[] = []
+    
+    // 生成电灯icon位置
+    const lightbulbPos = generateRandomPosition(excludePositions)
+    if (lightbulbPos) {
+      excludePositions.push(lightbulbPos)
+      newItems.push({
+        position: lightbulbPos,
+        type: 'lightbulb',
+      })
+    }
+    
+    // 生成4个选项位置（A/B/C/D）
+    const optionTypes: ItemType[] = ['optionA', 'optionB', 'optionC', 'optionD']
+    for (let i = 0; i < 4; i++) {
+      const optionPos = generateRandomPosition(excludePositions)
+      if (optionPos) {
+        excludePositions.push(optionPos)
+        newItems.push({
+          position: optionPos,
+          type: optionTypes[i],
+          optionIndex: i,
+        })
+      }
+    }
+    
+    setItems(newItems)
+  }, [words, snake, generateRandomPosition, onBack])
 
   // 初始化游戏
   const initGame = useCallback(() => {
@@ -157,127 +211,27 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
       return
     }
 
-    // 随机选择一个单字
-    const randomWord = words[Math.floor(Math.random() * words.length)]
-    setCurrentWord(randomWord)
-    
-    // 确定答案：优先使用 Spelling，否则使用 Word
-    const answerText = randomWord.spelling && randomWord.spelling.trim() 
-      ? randomWord.spelling.trim() 
-      : randomWord.word.trim()
-    
-    // Hint：显示 spelling 或 word（用于提示）
-    const hintText = randomWord.spelling && randomWord.spelling.trim()
-      ? randomWord.spelling.trim()
-      : randomWord.word.trim()
-    
-    setAnswer(answerText)
-    answerRef.current = answerText
-    setHint(hintText)
-    setExplanation(randomWord.explanation)
-    
-    // 重置游戏状态，初始蛇为1个头部+2格身体
-    const centerX = Math.floor(gridWidth / 2);
-    const centerY = Math.floor(gridHeight / 2);
-    const initialSnake = [
-      { x: centerX, y: centerY }, // 头部
-      { x: centerX - 1, y: centerY },  // 身体1
-      { x: centerX - 2, y: centerY },  // 身体2
-    ]
+    const initialSnake = getInitialSnake()
     setSnake(initialSnake)
     setDirection('RIGHT')
     setNextDirection('RIGHT')
-    setEatenChars([])
-    eatenCharsRef.current = []
     setScore(0)
-    scoreRef.current = 0
-    setLives(3)
-    livesRef.current = 3
-    setWrongWords([])
-    wrongWordsRef.current = []
-    bodyLengthRef.current = 2
-    snakeHistoryRef.current = []
-    roundStartStateRef.current = null
+    setLightbulbEaten(false)
+    setShowQuestionDialog(false)
+    setCurrentQuestion(null)
+    setItems([])
+    isPausedRef.current = false
+    
+    if (questionDialogTimer) {
+      clearInterval(questionDialogTimer)
+      setQuestionDialogTimer(null)
+    }
+    
     setStage('countdown')
     setCountdown(5)
-  }, [words, onBack])
+  }, [words, onBack, getInitialSnake])
 
-  // 生成随机位置（不与蛇身重叠）
-  const generateRandomPosition = useCallback((excludePositions: Position[]): Position => {
-    let position: Position
-    let attempts = 0
-    const maxAttempts = 1000
-    do {
-      position = {
-        x: Math.floor(Math.random() * gridWidth),
-        y: Math.floor(Math.random() * gridHeight),
-      }
-      attempts++
-      if (attempts > maxAttempts) {
-        // 如果尝试次数过多，返回一个随机位置（可能重叠，但避免无限循环）
-        break
-      }
-    } while (excludePositions.some(pos => pos.x === position.x && pos.y === position.y))
-    return position
-  }, [])
-
-  // 散布字符到游戏空间（避开蛇的位置）
-  const scatterChars = useCallback(() => {
-    if (!answerRef.current) return
-
-    const answerChars = Array.from(answerRef.current)
-    // 排除蛇的位置
-    const excludePositions: Position[] = [...snake]
-    const newFoods: Food[] = []
-
-    // 散布答案字符
-    answerChars.forEach((char, index) => {
-      const position = generateRandomPosition(excludePositions)
-      excludePositions.push(position)
-      newFoods.push({
-        position,
-        char,
-        isAnswer: true,
-        index,
-      })
-    })
-
-    // 随机选择另一个单字作为混淆
-    const availableWords = words.filter(w => w !== currentWord)
-    if (availableWords.length > 0) {
-      const confuseWord = availableWords[Math.floor(Math.random() * availableWords.length)]
-      const confuseAnswer = confuseWord.spelling && confuseWord.spelling.trim()
-        ? confuseWord.spelling.trim()
-        : confuseWord.word.trim()
-      const confuseChars = Array.from(confuseAnswer)
-
-      // 散布混淆字符
-      confuseChars.forEach((char) => {
-        const position = generateRandomPosition(excludePositions)
-        excludePositions.push(position)
-        newFoods.push({
-          position,
-          char,
-          isAnswer: false,
-          index: -1,
-        })
-      })
-    }
-
-    foodsRef.current = newFoods
-    setFoods(newFoods)
-
-    // 保存回合开始时的状态
-    roundStartStateRef.current = {
-      snake: [...snake],
-      foods: [...newFoods],
-      eatenChars: [],
-      direction: direction,
-    }
-    snakeHistoryRef.current = []
-  }, [words, currentWord, generateRandomPosition, snake, direction])
-
-  // 初始倒计时（首次进入游戏）
+  // 初始倒计时
   useEffect(() => {
     if (stage === 'countdown' && countdown > 0) {
       countdownRef.current = setTimeout(() => {
@@ -287,25 +241,174 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
         if (countdownRef.current) clearTimeout(countdownRef.current)
       }
     } else if (stage === 'countdown' && countdown === 0) {
-      scatterChars()
+      generateNewQuestion()
       setStage('playing')
     }
-  }, [stage, countdown, scatterChars])
+  }, [stage, countdown, generateNewQuestion])
 
-  // 回合倒计时（在游戏画面中）
-  useEffect(() => {
-    if (stage === 'roundCountdown' && countdown > 0) {
-      countdownRef.current = setTimeout(() => {
-        setCountdown(countdown - 1)
-      }, 1000)
-      return () => {
-        if (countdownRef.current) clearTimeout(countdownRef.current)
+  // 处理吃电灯icon
+  const handleEatLightbulb = useCallback(() => {
+    if (lightbulbEaten || !currentQuestion) return
+    
+    setLightbulbEaten(true)
+    isPausedRef.current = true
+    setShowQuestionDialog(true)
+    setQuestionDialogCountdown(5)
+    
+    // 移除电灯icon
+    setItems(prev => prev.filter(item => item.type !== 'lightbulb'))
+    
+    // 动态倒数5, 4, 3, 2, 1
+    let countdown = 5
+    const countdownInterval = setInterval(() => {
+      countdown--
+      setQuestionDialogCountdown(countdown)
+      
+      if (countdown <= 0) {
+        clearInterval(countdownInterval)
+        setShowQuestionDialog(false)
+        setQuestionDialogTimer(null)
+        // 立即恢复游戏，让贪食蛇继续移动
+        isPausedRef.current = false
       }
-    } else if (stage === 'roundCountdown' && countdown === 0) {
-      scatterChars()
-      setStage('playing')
+    }, 1000)
+    
+    setQuestionDialogTimer(countdownInterval as any)
+  }, [lightbulbEaten, currentQuestion])
+
+  // 处理吃选项
+  const handleEatOption = useCallback((optionIndex: number) => {
+    if (!currentQuestion) return
+    
+    const isCorrect = optionIndex === currentQuestion.correctAnswer
+    
+    if (isCorrect) {
+      // 答对了
+      setScore(prev => prev + pointsPerRound)
+      
+      // 身体长度+1（在尾部添加一个方形）
+      setSnake(prevSnake => {
+        const newSnake = [...prevSnake]
+        const tail = newSnake[newSnake.length - 1]
+        newSnake.push({ ...tail })
+        
+        // 移除所有物品
+        setItems([])
+        
+        // 检查可用空格数（非边界、非蛇身）
+        const availableSpaces = getAvailableSpaces(newSnake)
+        
+        // 如果可用空格数小于10，游戏结束
+        if (availableSpaces < 10) {
+          if (gameLoopRef.current) {
+            clearInterval(gameLoopRef.current)
+            gameLoopRef.current = null
+          }
+          setStage('gameOver')
+          setGameOverMessage('空間不足！遊戲結束')
+          setScore(currentScore => {
+            fetch('/api/student/game')
+              .then(res => res.json())
+              .then(data => {
+                setTotalPoints(data.points || 0)
+                onGameEnd(currentScore, data.points || 0, null)
+              })
+              .catch(() => {
+                onGameEnd(currentScore, undefined, null)
+              })
+            return currentScore
+          })
+          return newSnake
+        }
+        
+        // 生成下一题（使用更新后的snake状态）
+        setTimeout(() => {
+          const excludePositions: Position[] = [...newSnake]
+          const newItems: GameItem[] = []
+          
+          // 随机选择题目类型：0（看句子選意思）、1（看意思選句子）、2（看句子選單字）
+          const questionType = Math.floor(Math.random() * 3) as QuestionType
+          // 使用整个单词列表生成题目（与 /student/test 一致）
+          const question = examiner(words, questionType)
+          
+          if (question) {
+            setCurrentQuestion(question)
+            setLightbulbEaten(false)
+            
+            // 生成电灯icon位置
+            let lightbulbPos: Position | null = null
+            let attempts = 0
+            while (!lightbulbPos && attempts < 1000) {
+              const pos = generateRandomPosition(excludePositions)
+              if (pos) {
+                lightbulbPos = pos
+                excludePositions.push(pos)
+                newItems.push({
+                  position: pos,
+                  type: 'lightbulb',
+                })
+              }
+              attempts++
+            }
+            
+            // 生成4个选项位置
+            const optionTypes: ItemType[] = ['optionA', 'optionB', 'optionC', 'optionD']
+            for (let i = 0; i < 4; i++) {
+              let optionPos: Position | null = null
+              attempts = 0
+              while (!optionPos && attempts < 1000) {
+                const pos = generateRandomPosition(excludePositions)
+                if (pos) {
+                  optionPos = pos
+                  excludePositions.push(pos)
+                  newItems.push({
+                    position: pos,
+                    type: optionTypes[i],
+                    optionIndex: i,
+                  })
+                }
+                attempts++
+              }
+            }
+            
+            setItems(newItems)
+          }
+        }, 500)
+        
+        return newSnake
+      })
+        } else {
+      // 答错了，游戏结束
+      if (gameLoopRef.current) {
+        clearInterval(gameLoopRef.current)
+        gameLoopRef.current = null
+      }
+      setStage('gameOver')
+      setGameOverMessage('答錯了！遊戲結束')
+      setScore(currentScore => {
+        // 获取总点数
+        fetch('/api/student/game')
+          .then(res => res.json())
+          .then(data => {
+            setTotalPoints(data.points || 0)
+            // 传递错误信息
+            onGameEnd(currentScore, data.points || 0, {
+              question: currentQuestion,
+              userAnswer: optionIndex,
+              correctAnswer: currentQuestion.correctAnswer,
+            })
+          })
+          .catch(() => {
+            onGameEnd(currentScore, undefined, {
+              question: currentQuestion,
+              userAnswer: optionIndex,
+              correctAnswer: currentQuestion.correctAnswer,
+            })
+          })
+        return currentScore
+      })
     }
-  }, [stage, countdown, scatterChars])
+  }, [currentQuestion, pointsPerRound, words, generateRandomPosition, onGameEnd, getAvailableSpaces])
 
   // 游戏循环
   useEffect(() => {
@@ -317,14 +420,30 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
       return
     }
 
-    gameLoopRef.current = setInterval(() => {
-      setSnake(prevSnake => {
-        // 在移动前保存当前状态到历史（最多保存3步）
-        snakeHistoryRef.current.push([...prevSnake])
-        if (snakeHistoryRef.current.length > 3) {
-          snakeHistoryRef.current.shift()
-        }
+    // 如果暂停，不启动游戏循环（但保持监听，等待恢复）
+    if (isPausedRef.current) {
+      if (gameLoopRef.current) {
+        clearInterval(gameLoopRef.current)
+        gameLoopRef.current = null
+      }
+      // 不返回，继续监听 showQuestionDialog 的变化，等待恢复
+      return
+    }
 
+    // 只有在不暂停时才启动游戏循环
+    if (gameLoopRef.current) {
+      // 如果已经存在循环，先清除
+      clearInterval(gameLoopRef.current)
+      gameLoopRef.current = null
+    }
+
+    gameLoopRef.current = setInterval(() => {
+      // 在每次循环中检查是否暂停
+      if (isPausedRef.current) {
+        return
+      }
+      
+      setSnake(prevSnake => {
         const newSnake = [...prevSnake]
         const head = { ...newSnake[0] }
         const currentDir = nextDirection
@@ -347,77 +466,64 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
 
         // 检查撞墙
         if (head.x < 0 || head.x >= gridWidth || head.y < 0 || head.y >= gridHeight) {
-          handleLoseLife('撞牆了！')
+          if (gameLoopRef.current) {
+            clearInterval(gameLoopRef.current)
+            gameLoopRef.current = null
+          }
+          setStage('gameOver')
+          setGameOverMessage('撞牆了！')
+          onGameEnd(score, undefined, null)
           return prevSnake
         }
 
         // 检查撞到自己
         if (newSnake.some(segment => segment.x === head.x && segment.y === head.y)) {
-          handleLoseLife('撞到自己了！')
+          if (gameLoopRef.current) {
+            clearInterval(gameLoopRef.current)
+            gameLoopRef.current = null
+          }
+          setStage('gameOver')
+          setGameOverMessage('撞到自己了！')
+          // 获取总点数
+          fetch('/api/student/game')
+            .then(res => res.json())
+            .then(data => {
+              setTotalPoints(data.points || 0)
+              onGameEnd(score, data.points || 0, null)
+            })
+            .catch(() => {
+              onGameEnd(score, undefined, null)
+            })
           return prevSnake
         }
 
-        // 检查是否吃到食物
-        const currentFoods = foodsRef.current
-        const foodIndex = currentFoods.findIndex(
-          f => f.position.x === head.x && f.position.y === head.y
+        // 检查是否吃到物品
+        const currentItems = items
+        const itemIndex = currentItems.findIndex(
+          item => item.position.x === head.x && item.position.y === head.y
         )
 
-        if (foodIndex !== -1) {
-          const food = currentFoods[foodIndex]
+        if (itemIndex !== -1) {
+          const item = currentItems[itemIndex]
           
-          // 检查是否按正确顺序吃
-          const expectedIndex = eatenCharsRef.current.length
-          if (food.isAnswer && food.index === expectedIndex) {
-            // 正确顺序，吃掉
-            const newEatenChars = [...eatenCharsRef.current, food.char]
-            eatenCharsRef.current = newEatenChars
-            setEatenChars(newEatenChars)
-            const newFoods = currentFoods.filter((_, i) => i !== foodIndex)
-            foodsRef.current = newFoods
-            setFoods(newFoods)
-
-            // 检查是否完成拼字
-            if (newEatenChars.length === answerRef.current.length) {
-              // 完成拼字，在一回合中蛇的长度不会增长
-              newSnake.unshift(head)
-              newSnake.pop() // 保持长度不变
-              
-              // 完成一轮，身体长度增加2格（下一回合开始时应用）
-              bodyLengthRef.current += 2
-              
-              // 完成一轮
-              scoreRef.current += pointsPerRound
-              setScore(scoreRef.current)
-              eatenCharsRef.current = []
-              setEatenChars([])
-              
-              // 直接进入下一轮，不显示roundComplete
-              startNextRound()
-              return newSnake
-            } else {
-              // 继续游戏，在一回合中蛇的长度不会增长
-              newSnake.unshift(head)
-              newSnake.pop() // 保持长度不变
-              return newSnake
-            }
-          } else {
-            // 吃错顺序或吃到混淆字符
-            // 记录当前拼错的单字
-            const wrongWord = currentWord?.word || ''
-            if (wrongWord && !wrongWordsRef.current.includes(wrongWord)) {
-              wrongWordsRef.current.push(wrongWord)
-              setWrongWords([...wrongWordsRef.current])
-            }
-            handleLoseLife('吃錯順序了！')
-            return prevSnake
+          if (item.type === 'lightbulb') {
+            // 吃到电灯icon
+            handleEatLightbulb()
+          } else if (item.type.startsWith('option')) {
+            // 吃到选项
+            const optionIndex = item.optionIndex ?? 0
+            handleEatOption(optionIndex)
           }
-        } else {
-          // 没吃到，正常移动
-          newSnake.unshift(head)
-          newSnake.pop()
-          return newSnake
+          
+          // 移除被吃的物品
+          const newItems = currentItems.filter((_, i) => i !== itemIndex)
+          setItems(newItems)
         }
+
+        // 移动蛇
+        newSnake.unshift(head)
+        newSnake.pop()
+        return newSnake
       })
       
       setDirection(nextDirection)
@@ -429,129 +535,11 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
         gameLoopRef.current = null
       }
     }
-  }, [stage, nextDirection, currentWord])
-
-  // 开始下一轮
-  const startNextRound = useCallback(() => {
-    // 选择新单词
-    if (words.length === 0) {
-      onBack()
-      return
-    }
-    const randomWord = words[Math.floor(Math.random() * words.length)]
-    setCurrentWord(randomWord)
-    
-    const answerText = randomWord.spelling && randomWord.spelling.trim() 
-      ? randomWord.spelling.trim() 
-      : randomWord.word.trim()
-    
-    setAnswer(answerText)
-    answerRef.current = answerText
-    const hintText = randomWord.spelling && randomWord.spelling.trim()
-      ? randomWord.spelling.trim()
-      : randomWord.word.trim()
-    setHint(hintText)
-    setExplanation(randomWord.explanation)
-    
-    // 应用身体长度增长（身体部分增加2格）
-    setSnake(prevSnake => {
-      const newSnake = [...prevSnake]
-      const tail = newSnake[newSnake.length - 1]
-      // 身体长度应该是 bodyLengthRef.current，当前身体长度是 newSnake.length - 1（不包括头部）
-      const currentBodyLength = newSnake.length - 1
-      const targetBodyLength = bodyLengthRef.current
-      // 增加身体部分
-      for (let i = currentBodyLength; i < targetBodyLength; i++) {
-        newSnake.push({ ...tail })
-      }
-      return newSnake
-    })
-    
-    // 重置当前轮次
-    setEatenChars([])
-    eatenCharsRef.current = []
-    snakeHistoryRef.current = []
-    
-    // 在游戏画面中开始倒计时（不切换画面）
-    setStage('roundCountdown')
-    setCountdown(5)
-  }, [words, onBack])
-
-  // 处理失去生命
-  const handleLoseLife = (message: string) => {
-    // 停止游戏循环
-    if (gameLoopRef.current) {
-      clearInterval(gameLoopRef.current)
-      gameLoopRef.current = null
-    }
-
-    livesRef.current -= 1
-    const newLives = livesRef.current
-    
-    if (newLives <= 0) {
-      setStage('gameOver')
-      setGameOverMessage(message)
-      setLives(0)
-      // 计算点数（每完成一个单字得1点）
-      const points = scoreRef.current
-      onGameEnd(points)
-    } else {
-      // 还原状态
-      let restoredSnake: Position[] = []
-      let restoredFoods: Food[] = []
-      let restoredEatenChars: string[] = []
-      let restoredDirection: Direction = direction
-
-      if (snakeHistoryRef.current.length >= 3) {
-        // 如果有3步历史，还原到3步前
-        restoredSnake = [...snakeHistoryRef.current[snakeHistoryRef.current.length - 3]]
-        // 同时需要还原食物和已吃字符（从回合开始状态恢复）
-        if (roundStartStateRef.current) {
-          restoredFoods = [...roundStartStateRef.current.foods]
-          restoredEatenChars = []
-          restoredDirection = roundStartStateRef.current.direction
-        }
-      } else if (roundStartStateRef.current) {
-        // 如果历史不足3步，还原到回合开始时的状态
-        restoredSnake = [...roundStartStateRef.current.snake]
-        restoredFoods = [...roundStartStateRef.current.foods]
-        restoredEatenChars = []
-        restoredDirection = roundStartStateRef.current.direction
-      } else {
-        // 如果没有回合开始状态，保持当前状态（不应该发生，但作为安全措施）
-        restoredSnake = [...snake]
-        restoredFoods = [...foods]
-        restoredEatenChars = [...eatenChars]
-        restoredDirection = direction
-      }
-
-      // 应用还原
-      setSnake(restoredSnake)
-      setFoods(restoredFoods)
-      foodsRef.current = restoredFoods
-      setEatenChars(restoredEatenChars)
-      eatenCharsRef.current = restoredEatenChars
-      setDirection(restoredDirection)
-      setNextDirection(restoredDirection)
-      
-      // 清除历史，重新开始记录
-      snakeHistoryRef.current = []
-      
-      setLives(newLives)
-      setGameOverMessage(message)
-      setStage('paused')
-      
-      // 1秒后继续游戏
-      setTimeout(() => {
-        setGameOverMessage('')
-        setStage('playing')
-      }, 1000)
-    }
-  }
+  }, [stage, nextDirection, items, gridWidth, gridHeight, score, handleEatLightbulb, handleEatOption, onGameEnd, showQuestionDialog])
 
   // 键盘控制
   useEffect(() => {
-    if (stage !== 'playing') return
+    if (stage !== 'playing' || isPausedRef.current) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.key) {
@@ -599,11 +587,27 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
     }
   }
 
+  // 获取选项的颜色和形状
+  const getOptionStyle = (type: ItemType) => {
+    switch (type) {
+      case 'optionA':
+        return { bgColor: '#f44336', shape: 'square' } // 红色方形
+      case 'optionB':
+        return { bgColor: '#4caf50', shape: 'circle' } // 绿色圆形
+      case 'optionC':
+        return { bgColor: '#2196f3', shape: 'triangle' } // 蓝色三角形
+      case 'optionD':
+        return { bgColor: '#9c27b0', shape: 'star' } // 紫色星形
+      default:
+        return { bgColor: '#ff9800', shape: 'square' }
+    }
+  }
+
   // 渲染游戏画面
   const renderGame = () => {
-    const grid: (Position & { type: 'snake' | 'food' | 'empty', food?: Food })[] = []
+    const grid: (Position & { type: 'snake' | 'item' | 'empty', item?: GameItem, snakeIndex?: number })[] = []
 
-    // 初始化网格（宽扁形）
+    // 初始化网格
     for (let y = 0; y < gridHeight; y++) {
       for (let x = 0; x < gridWidth; x++) {
         grid.push({ x, y, type: 'empty' })
@@ -615,15 +619,16 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
       const cell = grid.find(c => c.x === segment.x && c.y === segment.y)
       if (cell) {
         cell.type = 'snake'
+        cell.snakeIndex = index
       }
     })
 
-    // 标记食物
-    foods.forEach(food => {
-      const cell = grid.find(c => c.x === food.position.x && c.y === food.position.y)
+    // 标记物品
+    items.forEach(item => {
+      const cell = grid.find(c => c.x === item.position.x && c.y === item.position.y)
       if (cell && cell.type === 'empty') {
-        cell.type = 'food'
-        cell.food = food
+        cell.type = 'item'
+        cell.item = item
       }
     })
 
@@ -638,82 +643,54 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
           position: 'relative',
         }}
       >
-        {/* 回合倒计时覆盖层 */}
-        {stage === 'roundCountdown' && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 10,
-              bgcolor: 'rgba(0, 0, 0, 0.7)',
-              borderRadius: 2,
-              p: 4,
-              textAlign: 'center',
-            }}
-          >
-            <Typography variant="h1" color="white">
-              {countdown}
-            </Typography>
-            <Typography variant="h6" color="white" sx={{ mt: 2 }}>
-              下一回合即將開始...
-            </Typography>
-          </Box>
-        )}
-
-        {/* 暂停覆盖层（失去生命时） */}
-        {stage === 'paused' && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 10,
-              bgcolor: 'rgba(255, 0, 0, 0.7)',
-              borderRadius: 2,
-              p: 4,
-              textAlign: 'center',
-            }}
-          >
-            <Typography variant="h4" color="white" sx={{ mb: 2 }}>
-              {gameOverMessage}
-            </Typography>
-            <Typography variant="h6" color="white">
-              還原中... 剩餘生命: {lives}
-            </Typography>
-          </Box>
-        )}
-
         {grid.map((cell, index) => {
           let bgColor = '#f5f5f5'
-          let content = ''
+          let content: React.ReactNode = ''
           let color = '#000'
+          let borderRadius: number | string = 0.5
+          let clipPath = 'none'
 
           if (cell.type === 'snake') {
-            // 找到这个格子在蛇中的位置
-            const snakeIndex = snake.findIndex(
-              seg => seg.x === cell.x && seg.y === cell.y
-            )
+            const snakeIndex = cell.snakeIndex ?? 0
             if (snakeIndex === 0) {
               // 头部：深绿色三角形
               bgColor = '#1b5e20'
+              clipPath = getTriangleClipPath(direction)
+              borderRadius = 0
             } else if (snakeIndex === 1) {
-              // 身体1：绿色正方形
+              // 身体1：中绿色方形
               bgColor = '#4caf50'
             } else {
-              // 身体其他部分：浅绿色正方形
+              // 身体其他部分：浅绿色方形
               bgColor = '#81c784'
             }
-          } else if (cell.type === 'food' && cell.food) {
-            // 所有食物都用橘黄色
-            bgColor = '#ff9800'
-            content = cell.food.char
-            color = '#fff'
+          } else if (cell.type === 'item' && cell.item) {
+            const item = cell.item
+            if (item.type === 'lightbulb') {
+              // 电灯icon
+              bgColor = '#ffeb3b'
+              content = <LightbulbIcon sx={{ fontSize: CELL_SIZE * 0.8, color: '#f57f17' }} />
+            } else {
+              // 选项
+              const style = getOptionStyle(item.type)
+              bgColor = style.bgColor
+              const label = item.type === 'optionA' ? 'A' : item.type === 'optionB' ? 'B' : item.type === 'optionC' ? 'C' : 'D'
+              content = label
+              color = '#fff'
+              
+              if (style.shape === 'circle') {
+                borderRadius = '50%'
+              } else if (style.shape === 'triangle') {
+                clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)'
+                borderRadius = 0
+              } else if (style.shape === 'star') {
+                // 星形用特殊字符或SVG
+                content = '★'
+              }
+            }
           }
 
-          const isHead = cell.type === 'snake' && snake[0].x === cell.x && snake[0].y === cell.y
+          const isHead = cell.type === 'snake' && cell.snakeIndex === 0
           
           return (
             <Box
@@ -729,8 +706,8 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
                 fontSize: '0.75rem',
                 fontWeight: 'bold',
                 border: '1px solid #ddd',
-                borderRadius: isHead ? 0 : 0.5,
-                clipPath: isHead ? getTriangleClipPath(direction) : 'none',
+                borderRadius: borderRadius === '50%' ? '50%' : borderRadius,
+                clipPath: clipPath !== 'none' ? clipPath : undefined,
               }}
             >
               {content}
@@ -745,31 +722,39 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
     return (
       <Box sx={{ mt: 4, maxWidth: 800, mx: 'auto' }}>
         <Paper sx={{ p: 4 }}>
-          <Card sx={{ mb: 4, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                提示
-              </Typography>
-              <Typography variant="h4" sx={{ mb: 2 }}>
-                {explanation}
-              </Typography>
-              <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
-                提示: {hint}
-              </Typography>
-              <Typography variant="body1">
-                請記住這個單字的拼法，準備開始遊戲！
-              </Typography>
-            </CardContent>
-          </Card>
-
-          <Box sx={{ textAlign: 'center', mt: 4 }}>
+          {/* 正上方显示倒数 */}
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Typography variant="h1" color="primary">
               {countdown}
             </Typography>
-            <Typography variant="h6" color="text.secondary" sx={{ mt: 2 }}>
-              遊戲即將開始...
-            </Typography>
           </Box>
+          
+          {/* 游戏规则 */}
+          <Card sx={{ mb: 3, bgcolor: 'info.light' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                遊戲規則
+              </Typography>
+              <Typography variant="body1" component="div" sx={{ mt: 2 }}>
+                <Box component="ul" sx={{ pl: 2 }}>
+                  <li>使用方向鍵控制貪食蛇移動</li>
+                  <li>吃到黃色電燈圖標可以查看題目（暫停5秒）</li>
+                  <li>吃到選項圖標來回答問題：
+                    <Box component="ul" sx={{ pl: 2, mt: 1 }}>
+                      <li>A = 紅色方形</li>
+                      <li>B = 綠色圓形</li>
+                      <li>C = 藍色三角形</li>
+                      <li>D = 紫色星形</li>
+                    </Box>
+                  </li>
+                  <li>答對獲得點數，身體長度+1，生成下一題</li>
+                  <li>答錯遊戲結束</li>
+                  <li>可以不看題目直接猜答案</li>
+                  <li>撞牆或撞到自己會遊戲結束</li>
+                </Box>
+              </Typography>
+            </CardContent>
+          </Card>
         </Paper>
       </Box>
     )
@@ -785,32 +770,17 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
           </Alert>
           <Alert severity="success" sx={{ mb: 2 }}>
             <Typography variant="h6">恭喜獲得 {score} 點</Typography>
+            {totalPoints !== null && (
+              <Typography variant="body1" sx={{ mt: 1 }}>
+                目前總點數: {totalPoints} 點
+              </Typography>
+            )}
           </Alert>
-          {wrongWords.length > 0 && (
-            <Card sx={{ mb: 2, bgcolor: 'warning.light' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  拼錯的單字：
-                </Typography>
-                {wrongWords.map((word, index) => (
-                  <Typography key={index} variant="body1" sx={{ mt: 1 }}>
-                    • {word}
-                  </Typography>
-                ))}
-              </CardContent>
-            </Card>
-          )}
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 3 }}>
             <Button variant="outlined" onClick={onBack}>
               返回
             </Button>
-            <Button variant="contained" onClick={() => {
-              setScore(0)
-              setLives(3)
-              setWrongWords([])
-              wrongWordsRef.current = []
-              initGame()
-            }}>
+            <Button variant="contained" onClick={initGame}>
               再玩一次
             </Button>
           </Box>
@@ -819,28 +789,13 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
     )
   }
 
-  // 游戏进行中、暂停中、或回合倒计时中
+  // 游戏进行中
   return (
     <Box sx={{ mt: 4, maxWidth: 800, mx: 'auto' }}>
       <Paper sx={{ p: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
           <Typography variant="h6">得分: {score}</Typography>
-          <Typography variant="h6">生命: {lives}</Typography>
         </Box>
-
-        <Card sx={{ mb: 3, bgcolor: 'info.light', color: 'info.contrastText' }}>
-          <CardContent>
-            <Typography variant="body1">
-              {explanation}
-            </Typography>
-            <Typography variant="h6" sx={{ mt: 1, fontWeight: 'bold' }}>
-              提示: {hint}
-            </Typography>
-            <Typography variant="body2" sx={{ mt: 1 }}>
-              已拼: {eatenChars.join('')} / {answer}
-            </Typography>
-          </CardContent>
-        </Card>
 
         {renderGame()}
 
@@ -849,16 +804,99 @@ export default function SnakeGame({ words, langUse, onGameEnd, onBack }: SnakeGa
             使用方向鍵控制蛇的移動
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            橙色 = 字符（包含正確和混淆字符）
+            黃色電燈 = 查看題目（暫停5秒）
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            A(紅方形) B(綠圓形) C(藍三角形) D(紫星形) = 選項
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 3 }}>
-          <Button variant="outlined" onClick={onBack}>
-            返回
-          </Button>
-        </Box>
       </Paper>
+
+      {/* 题目弹窗 */}
+      <Dialog 
+        open={showQuestionDialog} 
+        onClose={() => {}} 
+        maxWidth="sm" 
+        fullWidth
+        disableEscapeKeyDown
+      >
+        <DialogTitle>題目</DialogTitle>
+        <DialogContent>
+          {currentQuestion && (
+            <Box>
+              <Card sx={{ mb: 3 }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    題目
+                  </Typography>
+                  {currentQuestion.questionHighlight ? (
+                    <Typography variant="h5" sx={{ mt: 2 }}>
+                      {currentQuestion.question.substring(0, currentQuestion.questionHighlight.startIndex)}
+                      <Box component="span" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                        {currentQuestion.questionHighlight.word}
+                      </Box>
+                      {currentQuestion.question.substring(currentQuestion.questionHighlight.endIndex)}
+                    </Typography>
+                  ) : (
+                    <Typography variant="h5" sx={{ mt: 2 }}>
+                      {currentQuestion.question}
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Box sx={{ mb: 2 }}>
+                {currentQuestion.options.map((option, index) => {
+                  const highlights = currentQuestion.optionsHighlight?.[index] || []
+                  const optionLabel = ['A', 'B', 'C', 'D'][index]
+                  
+                  return (
+                    <Button
+                      key={index}
+                      fullWidth
+                      variant="outlined"
+                      disabled
+                      sx={{ 
+                        mb: 2, 
+                        py: 2, 
+                        textTransform: 'none',
+                        borderColor: 'grey.300',
+                        bgcolor: 'transparent',
+                      }}
+                    >
+                      <Typography variant="body1">
+                        {optionLabel}. {highlights.length > 0 ? (
+                          <>
+                            {highlights.map((highlight, hi) => {
+                              const prevEnd = hi === 0 ? 0 : highlights[hi - 1].endIndex
+                              return (
+                                <span key={hi}>
+                                  {option.substring(prevEnd, highlight.startIndex)}
+                                  <Box component="span" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                    {highlight.word}
+                                  </Box>
+                                  {hi === highlights.length - 1 && option.substring(highlight.endIndex)}
+                                </span>
+                              )
+                            })}
+                          </>
+                        ) : (
+                          option
+                        )}
+                      </Typography>
+                    </Button>
+                  )
+                })}
+              </Box>
+              
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+                {questionDialogCountdown > 0 ? `${questionDialogCountdown}秒後自動關閉` : '即將關閉...'}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   )
 }

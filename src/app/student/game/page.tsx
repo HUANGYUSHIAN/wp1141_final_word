@@ -21,6 +21,8 @@ import {
   CardContent,
   CardMedia,
   CardActionArea,
+  Chip,
+  Alert,
 } from '@mui/material'
 import { useSession } from 'next-auth/react'
 import { usePostHog } from '@/hooks/usePostHog'
@@ -96,6 +98,8 @@ export default function GamePage() {
   const [earnedPoints, setEarnedPoints] = useState<number | null>(null)
   const [totalPoints, setTotalPoints] = useState<number | null>(null)
   const [resetGame, setResetGame] = useState(false)
+  const [gameErrors, setGameErrors] = useState<any>(null) // 存储游戏错误信息
+  const [showErrorDialog, setShowErrorDialog] = useState(false)
 
   useEffect(() => {
     if (!session) {
@@ -207,8 +211,9 @@ export default function GamePage() {
     setStage('playing')
   }
 
-  const handleGameEnd = async (won: boolean, score: number) => {
+  const handleGameEnd = async (won: boolean, score: number, errors?: any) => {
     setStage('result')
+    setGameErrors(errors || null)
     
     // 計算點數（獲勝才有點數）
     if (won && score > 0) {
@@ -249,6 +254,7 @@ export default function GamePage() {
 
   const handleAIGameEnd = async (playerScore: number, aiScore: number, wrongAnswers: any[]) => {
     setAiGameResult({ playerScore, aiScore, wrongAnswers })
+    setGameErrors(wrongAnswers) // 存储错误答案用于查看错误
     setStage('result')
     
     // 獲取遊戲參數中的 scoreMultiplier
@@ -311,6 +317,8 @@ export default function GamePage() {
     setEarnedPoints(null)
     setTotalPoints(null)
     setAiGameResult(null)
+    setGameErrors(null)
+    setShowErrorDialog(false)
     setSelectedGameType(null)
     setSelectedVocab(null)
     setSelectedVocabId('')
@@ -339,6 +347,8 @@ export default function GamePage() {
     setResetGame(true)
     setEarnedPoints(null)
     setTotalPoints(null)
+    setGameErrors(null)
+    setShowErrorDialog(false)
     setStage('playing')
   }
 
@@ -499,7 +509,7 @@ export default function GamePage() {
           words={selectedVocab.words}
           langUse={selectedLangUse}
           langExp={selectedLangExp}
-          onGameEnd={handleGameEnd}
+          onGameEnd={(won, score, errors) => handleGameEnd(won, score, errors)}
           onBack={handleBack}
           resetGame={resetGame}
         />
@@ -509,7 +519,40 @@ export default function GamePage() {
         <SnakeGame
           words={selectedVocab.words}
           langUse={selectedLangUse}
-          onGameEnd={(score) => handleGameEnd(true, score)}
+          onGameEnd={async (score, totalPoints, errors) => {
+            // 保存点数
+            if (score > 0) {
+              try {
+                const response = await fetch('/api/student/game', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    accuracy: 100,
+                    totalTime: 10000,
+                    questionCount: 1,
+                    correctCount: 1,
+                    earnedPoints: score,
+                  }),
+                })
+                if (response.ok) {
+                  const data = await response.json()
+                  captureEvent("game_completed", {
+                    game_type: 'snake',
+                    score: score,
+                    points_earned: data.earnedPoints,
+                    duration_seconds: 10,
+                    success: true,
+                  })
+                  handleGameEnd(true, score, null)
+                }
+              } catch (error) {
+                console.error('保存點數失敗:', error)
+                handleGameEnd(true, score, null)
+              }
+            } else {
+              handleGameEnd(true, score, errors)
+            }
+          }}
           onBack={handleBack}
         />
       )
@@ -560,15 +603,102 @@ export default function GamePage() {
             <Button variant="contained" onClick={handlePlayAgain} sx={{ mr: 2 }}>
               再玩一次
             </Button>
-            <Button variant="outlined" onClick={handleReset} sx={{ mr: 2 }}>
-              重新開始
-            </Button>
+            {gameErrors && (
+              <Button variant="outlined" onClick={() => setShowErrorDialog(true)} sx={{ mr: 2 }}>
+                查看錯誤
+              </Button>
+            )}
             <Button variant="outlined" onClick={handleBack}>
               返回遊戲選擇
             </Button>
           </Box>
         </Paper>
       </Box>
+
+      {/* 錯誤詳情對話框 */}
+      <Dialog open={showErrorDialog} onClose={() => setShowErrorDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle>錯誤詳情</DialogTitle>
+        <DialogContent>
+          {selectedGameType === 'wordle' && gameErrors && (
+            <Box>
+              <Alert severity="error" sx={{ mb: 2 }}>
+                <Typography variant="h6">遊戲失敗</Typography>
+                <Typography variant="body1" sx={{ mt: 1 }}>
+                  正確答案是: <strong>{gameErrors.correctAnswer}</strong>
+                </Typography>
+                {gameErrors.targetWord && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>單字解釋：</strong>{gameErrors.targetWord.explanation}
+                    </Typography>
+                    {gameErrors.targetWord.sentence && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
+                        <strong>例句：</strong>"{gameErrors.targetWord.sentence}"
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+              </Alert>
+            </Box>
+          )}
+          {selectedGameType === 'snake' && gameErrors && (
+            <Box>
+              <Alert severity="error" sx={{ mb: 2 }}>
+                <Typography variant="h6">答錯了！</Typography>
+                {gameErrors.question && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body1" gutterBottom>
+                      <strong>題目：</strong>{gameErrors.question.question}
+                    </Typography>
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="body2" color="error.main" gutterBottom>
+                        你的答案：{gameErrors.question.options[gameErrors.userAnswer] || '未作答'}
+                      </Typography>
+                      <Typography variant="body2" color="success.main">
+                        正確答案：{gameErrors.question.options[gameErrors.correctAnswer]}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+              </Alert>
+            </Box>
+          )}
+          {selectedGameType === 'ai-king' && gameErrors && gameErrors.length > 0 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                錯誤題目 ({gameErrors.length} 題)
+              </Typography>
+              {gameErrors.map((wrong: any, index: number) => (
+                <Card key={index} sx={{ mb: 2, p: 2 }}>
+                  <Typography variant="body1" gutterBottom>
+                    <strong>題目 {index + 1}：</strong>
+                    {wrong.question.question}
+                  </Typography>
+                  <Box sx={{ mt: 1 }}>
+                    <Chip
+                      label={`你的答案：${wrong.question.options[wrong.userAnswer] || '未作答'}`}
+                      color="error"
+                      size="small"
+                      sx={{ mr: 1 }}
+                    />
+                    <Chip
+                      label={`正確答案：${wrong.question.options[wrong.correctAnswer]}`}
+                      color="success"
+                      size="small"
+                    />
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    答題時間：{(wrong.timeSpent / 1000).toFixed(1)} 秒
+                  </Typography>
+                </Card>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowErrorDialog(false)}>關閉</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

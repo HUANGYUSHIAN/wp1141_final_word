@@ -15,6 +15,7 @@ import {
   Alert,
   LinearProgress,
   Chip,
+  Grid,
 } from '@mui/material'
 import VolumeUpIcon from '@mui/icons-material/VolumeUp'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
@@ -38,10 +39,11 @@ interface WrongAnswer {
   timeSpent: number
 }
 
-type GameStage = 'playing' | 'result'
+type GameStage = 'countdown' | 'playing' | 'result'
 
 export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: AIGameProps) {
-  const [stage, setStage] = useState<GameStage>('playing')
+  const [stage, setStage] = useState<GameStage>('countdown')
+  const [countdown, setCountdown] = useState(5)
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [currentAnswer, setCurrentAnswer] = useState<number | null>(null)
@@ -84,7 +86,7 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
 
   // 生成题目
   useEffect(() => {
-    if (totalQuestions === 0) return; // 等待参数加载
+    if (totalQuestions === 0 || stage !== 'countdown') return; // 等待参数加载和倒数阶段
     const generatedQuestions: Question[] = []
     for (let i = 0; i < totalQuestions; i++) {
       // 混合选项：随机选择 0-4 中的一种类型
@@ -96,9 +98,21 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
     }
     setQuestions(generatedQuestions)
     setTimeLeft(TIME_LIMIT)
-  }, [])
+  }, [totalQuestions, words, stage])
+  
+  // 倒数计时（游戏开始前）
+  useEffect(() => {
+    if (stage === 'countdown' && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    } else if (stage === 'countdown' && countdown === 0) {
+      setStage('playing')
+    }
+  }, [stage, countdown])
 
-  // 倒计时
+  // 倒计时（答题时间）
   useEffect(() => {
     if (stage !== 'playing' || currentQuestionIndex >= questions.length) return
 
@@ -297,6 +311,41 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
     }
   }
 
+  // 倒数画面
+  if (stage === 'countdown') {
+    return (
+      <Box sx={{ mt: 4, maxWidth: 600, mx: 'auto' }}>
+        <Paper sx={{ p: 4 }}>
+          {/* 正上方显示倒数 */}
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Typography variant="h1" color="primary">
+              {countdown}
+            </Typography>
+          </Box>
+          
+          {/* 游戏规则 */}
+          <Card sx={{ mb: 3, bgcolor: 'info.light' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                遊戲規則
+              </Typography>
+              <Typography variant="body1" component="div" sx={{ mt: 2 }}>
+                <Box component="ul" sx={{ pl: 2 }}>
+                  <li>與 AI 對戰，看誰答對更多題目</li>
+                  <li>共有 {totalQuestions} 題</li>
+                  <li>每題有 {TIME_LIMIT} 秒答題時間</li>
+                  <li>答對越快得分越高</li>
+                  <li>AI 會在 {aiMinTime}-{aiMaxTime} 秒內答題，正確率 {Math.round(aiCorrectRate * 100)}%</li>
+                  <li>最終得分 = 玩家得分 - AI 得分（如果{'>'}0則獲得點數）</li>
+                </Box>
+              </Typography>
+            </CardContent>
+          </Card>
+        </Paper>
+      </Box>
+    )
+  }
+
   if (stage === 'result') {
     const finalScore = Math.round(playerScore - aiScore)
     const earnedPoints = finalScore > 0 ? Math.round(finalScore) : 0
@@ -367,8 +416,30 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
           </Box>
 
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-            <Button variant="contained" onClick={onBack}>
-              返回
+            <Button variant="contained" onClick={() => {
+              setStage('countdown')
+              setCountdown(5)
+              setCurrentQuestionIndex(0)
+              setPlayerScore(0)
+              setAiScore(0)
+              setAnswers([])
+              setWrongAnswers([])
+              // 重新生成题目
+              const generatedQuestions: Question[] = []
+              for (let i = 0; i < totalQuestions; i++) {
+                const actualQuestionType = Math.floor(Math.random() * 5) as QuestionType
+                const question = examiner(words, actualQuestionType)
+                if (question) {
+                  generatedQuestions.push(question)
+                }
+              }
+              setQuestions(generatedQuestions)
+              setTimeLeft(TIME_LIMIT)
+            }} sx={{ mr: 2 }}>
+              再玩一次
+            </Button>
+            <Button variant="outlined" onClick={onBack}>
+              返回遊戲選擇
             </Button>
           </Box>
         </Paper>
@@ -391,40 +462,65 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
 
   const progress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0
 
-  return (
-    <Box sx={{ mt: 4, maxWidth: 800, mx: 'auto' }}>
-      <Paper sx={{ p: 4 }}>
-        {/* 进度条 */}
-        <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              進度: {currentQuestionIndex + 1} / {totalQuestions}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              你的得分: {playerScore.toFixed(3)} | 電腦得分: {aiScore.toFixed(3)}
-            </Typography>
+  // 渲染选项内容（带高亮）
+  const renderOptionContent = (option: string, highlights: any[]) => {
+    if (highlights.length > 0 && option) {
+      const parts: React.ReactNode[] = []
+      let lastIndex = 0
+      highlights.forEach((highlight) => {
+        if (highlight.startIndex > lastIndex) {
+          parts.push(option.substring(lastIndex, highlight.startIndex))
+        }
+        parts.push(
+          <Box key={highlight.startIndex} component="span" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+            {highlight.word}
           </Box>
-          <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 1 }} />
-        </Box>
+        )
+        lastIndex = highlight.endIndex
+      })
+      if (lastIndex < option.length) {
+        parts.push(option.substring(lastIndex))
+      }
+      return <>{parts}</>
+    }
+    return option
+  }
 
-        {/* 倒计时 */}
-        <Box sx={{ mb: 3, textAlign: 'center' }}>
-          <Typography
-            variant="h2"
-            color={timeLeft <= 3 ? 'error.main' : 'primary.main'}
-            sx={{ fontWeight: 'bold' }}
-          >
-            {timeLeft}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            剩餘時間（秒）
-          </Typography>
-        </Box>
+  return (
+    <Box sx={{ mt: 2, maxWidth: 1000, mx: 'auto', px: 2 }}>
+      <Paper sx={{ p: 3 }}>
+        {/* Row 1: 当前题目/总题目、时间倒数 */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={6}>
+            <Box sx={{ textAlign: 'left' }}>
+              <Typography variant="h6" color="text.secondary">
+                進度: {currentQuestionIndex + 1} / {totalQuestions}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                你的得分: {playerScore.toFixed(3)} | 電腦得分: {aiScore.toFixed(3)}
+              </Typography>
+            </Box>
+          </Grid>
+          <Grid item xs={6}>
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography
+                variant="h3"
+                color={timeLeft <= 3 ? 'error.main' : 'primary.main'}
+                sx={{ fontWeight: 'bold' }}
+              >
+                {timeLeft}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                剩餘時間（秒）
+              </Typography>
+            </Box>
+          </Grid>
+        </Grid>
 
-        {/* 题目 */}
-        <Card sx={{ mb: 3 }}>
+        {/* Row 2: 题目 */}
+        <Card sx={{ mb: 2 }}>
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Typography variant="h6">題目</Typography>
               {(currentQuestion.questionType === 3 || currentQuestion.questionType === 4) && (
                 <Button
@@ -432,13 +528,14 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
                   onClick={handleSpeak}
                   variant="outlined"
                   disabled={isSpeaking}
+                  size="small"
                 >
                   {isSpeaking ? '播放中...' : '播放題目'}
                 </Button>
               )}
             </Box>
             {currentQuestion.questionType !== 3 && currentQuestion.questionType !== 4 ? (
-              <Typography variant="h5" sx={{ mt: 2, mb: 3 }}>
+              <Typography variant="h6" sx={{ mt: 1 }}>
                 {currentQuestion.questionHighlight ? (
                   <>
                     {currentQuestion.question.substring(0, currentQuestion.questionHighlight.startIndex)}
@@ -452,7 +549,7 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
                 )}
               </Typography>
             ) : (
-              <Box sx={{ mt: 2, mb: 3, minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Box sx={{ mt: 1, minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography variant="body1" color="text.secondary">
                   請點擊播放按鈕聽題目
                 </Typography>
@@ -461,92 +558,129 @@ export default function AIGame({ words, langUse, langExp, onGameEnd, onBack }: A
           </CardContent>
         </Card>
 
-        {/* 选项 */}
-        <Box sx={{ mb: 3 }}>
-          <RadioGroup
-            value={currentAnswer !== null ? currentAnswer.toString() : ''}
-            onChange={(e) => handleAnswer(parseInt(e.target.value))}
-          >
-            {currentQuestion.options.map((option, index) => {
-              const highlights = currentQuestion.optionsHighlight?.[index] || []
-              let displayOption = option
-
-              if (highlights.length > 0 && option) {
-                const parts: React.ReactNode[] = []
-                let lastIndex = 0
-                highlights.forEach((highlight) => {
-                  if (highlight.startIndex > lastIndex) {
-                    parts.push(option.substring(lastIndex, highlight.startIndex))
-                  }
-                  parts.push(
-                    <Box key={highlight.startIndex} component="span" sx={{ color: 'error.main', fontWeight: 'bold' }}>
-                      {highlight.word}
-                    </Box>
-                  )
-                  lastIndex = highlight.endIndex
-                })
-                if (lastIndex < option.length) {
-                  parts.push(option.substring(lastIndex))
-                }
-                displayOption = parts as any
-              }
-
-              return (
-                <FormControlLabel
-                  key={index}
-                  value={index.toString()}
-                  control={<Radio />}
-                  label={
-                    <Typography variant="body1">
-                      {typeof displayOption === 'string' ? displayOption : displayOption}
-                    </Typography>
-                  }
-                  disabled={currentAnswer !== null}
-                  sx={{
-                    mb: 1,
-                    p: 2,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 1,
-                    '&:hover': currentAnswer === null && !aiAnswered ? { bgcolor: 'action.hover' } : {},
+        {/* Row 3: A, B各半 */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          {[0, 1].map((index) => {
+            const highlights = currentQuestion.optionsHighlight?.[index] || []
+            const optionLabel = ['A', 'B', 'C', 'D'][index]
+            const isSelected = currentAnswer === index
+            return (
+              <Grid item xs={6} key={index}>
+                <Box
+                  onClick={() => {
+                    if (currentAnswer === null) {
+                      handleAnswer(index)
+                    }
                   }}
-                />
-              )
-            })}
-          </RadioGroup>
-        </Box>
+                  sx={{
+                    width: '100%',
+                    p: 2,
+                    border: '2px solid',
+                    borderColor: isSelected 
+                      ? (feedback === 'correct' ? 'success.main' : 'error.main')
+                      : 'divider',
+                    borderRadius: 2,
+                    bgcolor: isSelected 
+                      ? (feedback === 'correct' ? 'success.light' : 'error.light')
+                      : 'transparent',
+                    '&:hover': currentAnswer === null && !aiAnswered ? { 
+                      bgcolor: 'action.hover',
+                      borderColor: 'primary.main',
+                    } : {},
+                    cursor: currentAnswer === null ? 'pointer' : 'default',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Radio
+                    checked={isSelected}
+                    disabled={currentAnswer !== null}
+                    sx={{ mr: 1 }}
+                  />
+                  <Typography variant="body1" sx={{ flex: 1 }}>
+                    {optionLabel}. {renderOptionContent(currentQuestion.options[index], highlights)}
+                  </Typography>
+                </Box>
+              </Grid>
+            )
+          })}
+        </Grid>
 
-        {/* 反馈提示 */}
-        {feedback && (
-          <Box sx={{ mb: 2, textAlign: 'center' }}>
-            {feedback === 'correct' ? (
-              <Alert severity="success" icon={<CheckCircleIcon />}>
-                答對了！+{Math.round((5 * timeLeft / TIME_LIMIT) * 1000) / 1000} 分
-              </Alert>
-            ) : (
-              <Alert severity="error" icon={<CancelIcon />}>
-                答錯了
-              </Alert>
-            )}
-          </Box>
-        )}
+        {/* Row 4: C, D各半 */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          {[2, 3].map((index) => {
+            const highlights = currentQuestion.optionsHighlight?.[index] || []
+            const optionLabel = ['A', 'B', 'C', 'D'][index]
+            const isSelected = currentAnswer === index
+            return (
+              <Grid item xs={6} key={index}>
+                <Box
+                  onClick={() => {
+                    if (currentAnswer === null) {
+                      handleAnswer(index)
+                    }
+                  }}
+                  sx={{
+                    width: '100%',
+                    p: 2,
+                    border: '2px solid',
+                    borderColor: isSelected 
+                      ? (feedback === 'correct' ? 'success.main' : 'error.main')
+                      : 'divider',
+                    borderRadius: 2,
+                    bgcolor: isSelected 
+                      ? (feedback === 'correct' ? 'success.light' : 'error.light')
+                      : 'transparent',
+                    '&:hover': currentAnswer === null && !aiAnswered ? { 
+                      bgcolor: 'action.hover',
+                      borderColor: 'primary.main',
+                    } : {},
+                    cursor: currentAnswer === null ? 'pointer' : 'default',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Radio
+                    checked={isSelected}
+                    disabled={currentAnswer !== null}
+                    sx={{ mr: 1 }}
+                  />
+                  <Typography variant="body1" sx={{ flex: 1 }}>
+                    {optionLabel}. {renderOptionContent(currentQuestion.options[index], highlights)}
+                  </Typography>
+                </Box>
+              </Grid>
+            )
+          })}
+        </Grid>
 
-        {/* AI 答题提示 */}
-        {aiAnswerTime !== null && (
-          <Box sx={{ mb: 2, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              電腦將在 {aiAnswerTime} 秒後回答
-            </Typography>
-          </Box>
-        )}
-
-        {aiAnswered && (
-          <Box sx={{ mb: 2, textAlign: 'center' }}>
-            <Alert severity="info">
-              電腦已回答
+        {/* Row 5: 电脑回答情况 */}
+        <Box sx={{ mb: 2 }}>
+          {aiAnswerTime !== null && !aiAnswered && (
+            <Alert severity="info" sx={{ mb: 1 }}>
+              <Typography variant="body2">
+                電腦將在 {aiAnswerTime} 秒後回答
+              </Typography>
             </Alert>
-          </Box>
-        )}
+          )}
+          {aiAnswered && (
+            <Alert severity="info" sx={{ mb: 1 }}>
+              <Typography variant="body2">
+                電腦已回答
+              </Typography>
+            </Alert>
+          )}
+          {feedback && (
+            <Alert 
+              severity={feedback === 'correct' ? 'success' : 'error'} 
+              icon={feedback === 'correct' ? <CheckCircleIcon /> : <CancelIcon />}
+            >
+              {feedback === 'correct' 
+                ? `答對了！+${Math.round((5 * timeLeft / TIME_LIMIT) * 1000) / 1000} 分`
+                : '答錯了'}
+            </Alert>
+          )}
+        </Box>
       </Paper>
     </Box>
   )
