@@ -27,6 +27,7 @@ import MenuBookIcon from "@mui/icons-material/MenuBook";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import SettingsIcon from "@mui/icons-material/Settings";
 import FeedbackIcon from "@mui/icons-material/Feedback";
+import BarChartIcon from "@mui/icons-material/BarChart";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { signOut } from "next-auth/react";
 
@@ -38,6 +39,7 @@ const menuItems = [
   { text: "單字本管理", icon: <MenuBookIcon />, path: "/admin/vocabulary" },
   { text: "優惠券管理", icon: <LocalOfferIcon />, path: "/admin/coupon" },
   { text: "意見回饋", icon: <FeedbackIcon />, path: "/admin/feedback" },
+  { text: "統計數據", icon: <BarChartIcon />, path: "/admin/statistics" },
   { text: "設定", icon: <SettingsIcon />, path: "/admin/setting" },
 ];
 

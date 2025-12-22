@@ -24,7 +24,8 @@
     "db": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/db.ts",
     "check:oauth": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/check-google-oauth.ts",
     "check:vercel": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/check-vercel-env.ts",
-    "test:env": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/test-env.ts"
+    "test:env": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/test-env.ts",
+    "test:posthog": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/test-posthog.ts"
   },
   "dependencies": {
     "@emotion/cache": "^11.13.3",
@@ -37,13 +38,14 @@
     "franc": "^6.2.0",
     "next": "^16.0.10",
     "next-auth": "^4.24.10",
+    "openai": "^4.0.0",
     "papaparse": "^5.5.3",
+    "posthog-js": "^1.309.1",
     "react": "19.2.0",
     "react-confetti": "^6.4.0",
     "react-dom": "19.2.0",
     "react-use": "^17.6.0",
-    "xlsx": "^0.18.5",
-    "openai": "^4.0.0"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20",

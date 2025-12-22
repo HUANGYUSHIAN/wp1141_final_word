@@ -23,6 +23,7 @@ import {
   CardActionArea,
 } from '@mui/material'
 import { useSession } from 'next-auth/react'
+import { usePostHog } from '@/hooks/usePostHog'
 import { getLanguageLabel, LANGUAGE_OPTIONS } from '@/components/LanguageSelect'
 import WordleGame from '@/components/WordleGame'
 import SnakeGame from '@/components/SnakeGame'
@@ -78,6 +79,7 @@ const games = [
 export default function GamePage() {
   const router = useRouter()
   const { data: session } = useSession()
+  const { captureEvent } = usePostHog()
   const [loading, setLoading] = useState(true)
   const [vocabularies, setVocabularies] = useState<Vocabulary[]>([])
   const [filteredVocabularies, setFilteredVocabularies] = useState<Vocabulary[]>([])
@@ -195,6 +197,11 @@ export default function GamePage() {
       sessionStorage.removeItem(storageKey)
     }
     
+    // 追踪游戏开始
+    captureEvent("game_started", {
+      game_type: selectedGameType,
+      vocabulary_id: selectedVocab?.vocabularyId || selectedVocabId,
+    });
     setResetGame(true)
     setOpenSetupDialog(false)
     setStage('playing')
@@ -223,6 +230,14 @@ export default function GamePage() {
 
         if (response.ok) {
           const data = await response.json()
+          // 追踪游戏完成
+          captureEvent("game_completed", {
+            game_type: selectedGameType || 'wordle',
+            score: score,
+            points_earned: data.earnedPoints,
+            duration_seconds: Math.floor(totalTime / 1000),
+            success: won,
+          });
           setEarnedPoints(data.earnedPoints)
           setTotalPoints(data.totalPoints)
         }

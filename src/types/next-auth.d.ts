@@ -4,6 +4,7 @@ declare module "next-auth" {
   interface Session {
     userId?: string; // 本网站的 userId
     googleId?: string | null; // Google ID（OAuth 登录）或 null（测试登录）
+    dataType?: string | null; // 用户角色：Student, Supplier, Admin
     user: {
       email?: string | null;
       name?: string | null;

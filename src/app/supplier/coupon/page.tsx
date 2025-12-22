@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { usePostHog } from "@/hooks/usePostHog";
 import {
   Box,
   Typography,
@@ -48,6 +50,8 @@ interface Coupon {
 }
 
 export default function SupplierCouponPage() {
+  const { data: session } = useSession();
+  const { captureEvent } = usePostHog();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
@@ -282,6 +286,10 @@ export default function SupplierCouponPage() {
         }),
       });
       if (response.ok) {
+        // 追踪优惠券创建
+        captureEvent("coupon_created", {
+          supplier_id: session?.userId || "",
+        });
         // 清空表單
         setFormData({
           name: "",

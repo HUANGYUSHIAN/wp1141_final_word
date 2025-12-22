@@ -26,6 +26,7 @@ import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import SettingsIcon from "@mui/icons-material/Settings";
 import CloseIcon from "@mui/icons-material/Close";
+import { usePostHog } from "@/hooks/usePostHog";
 
 interface Chat {
   timestamp: number;
@@ -36,6 +37,7 @@ interface Chat {
 
 export default function GrammarPage() {
   const { data: session } = useSession();
+  const { captureEvent } = usePostHog();
   const [chats, setChats] = useState<Chat[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -127,6 +129,20 @@ export default function GrammarPage() {
 
       if (response.ok) {
         const data = await response.json();
+        // 追踪文法问题
+        const isQuickReply = !!messageText;
+        if (isQuickReply) {
+          captureEvent("grammar_quick_reply_used", {
+            topic: message,
+            language: grammarLang,
+          });
+        } else {
+          captureEvent("grammar_question_asked", {
+            language: grammarLang,
+            level: level,
+            topic: message.substring(0, 50), // 截取前50字符作为主题
+          });
+        }
         const aiMessage: Chat = {
           timestamp: Date.now(),
           content: data.response || "grammar功能開發中",
@@ -214,6 +230,10 @@ export default function GrammarPage() {
       });
 
       if (response.ok) {
+        // 追踪删除对话
+        captureEvent("grammar_chat_deleted", {
+          chat_count: selectedChats.size,
+        });
         setChats(newChats);
         setSelectedChats(new Set());
       } else {

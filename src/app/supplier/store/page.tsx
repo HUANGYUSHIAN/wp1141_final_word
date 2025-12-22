@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { usePostHog } from "@/hooks/usePostHog";
 import {
   Box,
   Typography,
@@ -40,6 +42,8 @@ interface Store {
 }
 
 export default function SupplierStorePage() {
+  const { data: session } = useSession();
+  const { captureEvent } = usePostHog();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -195,6 +199,13 @@ export default function SupplierStorePage() {
       }
 
       if (response.ok) {
+        // 追踪店铺创建
+        if (!editingStore) {
+          captureEvent("store_created", {
+            supplier_id: session?.userId || "",
+            has_location: !!storeFormData.location,
+          });
+        }
         setSuccess(editingStore ? "分店更新成功！" : "分店新增成功！");
         handleCloseDialog();
         await fetchStores();

@@ -38,6 +38,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import VocabularyUpload from "@/components/VocabularyUpload";
 import LanguageSelect, { LANGUAGE_OPTIONS } from "@/components/LanguageSelect";
 import { useSession } from "next-auth/react";
+import { usePostHog } from "@/hooks/usePostHog";
 
 interface Vocabulary {
   vocabularyId: string;
@@ -65,6 +66,7 @@ export default function StudentVocabularyPage() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { captureEvent } = usePostHog();
   const [myVocabularies, setMyVocabularies] = useState<Vocabulary[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -337,6 +339,12 @@ export default function StudentVocabularyPage() {
       });
 
       if (response.ok) {
+        // 追踪单字本创建
+        captureEvent("vocabulary_created", {
+          method: "manual",
+          language: `${createLangUse}-${createLangExp}`,
+          word_count: createWords.length,
+        });
         setOpenCreateDialog(false);
         setCreateLangUse("");
         setCreateLangExp("");
@@ -411,6 +419,13 @@ export default function StudentVocabularyPage() {
       );
 
       if (response.ok) {
+        // 追踪单字编辑
+        const batchEdit = editingWords.length > 1;
+        captureEvent("word_edited", {
+          vocabulary_id: selectedVocabulary.vocabularyId,
+          batch_edit: batchEdit,
+          word_count: editingWords.length,
+        });
         await fetchWords(selectedVocabulary.vocabularyId, wordsPage);
         setError("");
         alert("單字儲存成功！");
@@ -428,6 +443,10 @@ export default function StudentVocabularyPage() {
 
   const handleBrowse = async () => {
     setOpenBrowseDialog(true);
+    // 追踪浏览公开单字本
+    captureEvent("vocabulary_browsed", {
+      filter_applied: false,
+    });
     await fetchBrowseVocabularies(0);
   };
 
@@ -476,6 +495,11 @@ export default function StudentVocabularyPage() {
   };
 
   const handleAddVocabulary = async (vocabulary: Vocabulary) => {
+    // 追踪加入单字本
+    captureEvent("vocabulary_added", {
+      vocabulary_id: vocabulary.vocabularyId,
+      word_count: vocabulary.wordCount,
+    });
     try {
       const response = await fetch("/api/student/vocabularies/add", {
         method: "POST",
@@ -549,6 +573,13 @@ export default function StudentVocabularyPage() {
 
       if (response.ok) {
         const data = await response.json();
+        // 追踪 AI 生成单字本
+        captureEvent("vocabulary_created", {
+          method: "ai_generated",
+          language: `${generateFormData.langUse}-${generateFormData.langExp}`,
+          word_count: 30, // AI 生成固定 30 个
+          level: generateFormData.level,
+        });
         // 立即關閉對話框並刷新列表
         setOpenGenerateDialog(false);
         setGenerateFormData({

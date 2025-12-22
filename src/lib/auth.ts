@@ -318,6 +318,26 @@ export const authOptions: NextAuthOptions = {
       if (token.userId) {
         session.userId = token.userId as string;
         console.log("[Session] session.userId set to:", session.userId);
+        
+        // 从数据库获取 dataType（如果 token 中没有）
+        if (!token.dataType) {
+          try {
+            const user = await prisma.user.findUnique({
+              where: { userId: token.userId as string },
+              select: { dataType: true },
+            });
+            if (user?.dataType) {
+              (token as any).dataType = user.dataType;
+            }
+          } catch (error) {
+            console.error("[Session] Error fetching dataType:", error);
+          }
+        }
+        
+        // 设置 session.dataType
+        if ((token as any).dataType) {
+          (session as any).dataType = (token as any).dataType;
+        }
       } else {
         console.error("[Session] WARNING: token.userId is missing! Session will be invalid.");
       }
@@ -339,7 +359,7 @@ export const authOptions: NextAuthOptions = {
         if (token.picture !== undefined) session.user.image = token.picture as string | null;
       }
 
-      console.log("[Session] Final session:", { userId: session.userId, hasUser: !!session.user });
+      console.log("[Session] Final session:", { userId: session.userId, dataType: (session as any).dataType, hasUser: !!session.user });
       return session;
     },
 
