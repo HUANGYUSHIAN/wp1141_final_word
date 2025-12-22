@@ -43,6 +43,9 @@ const DB_FILES = {
   words: path.join(DB_DIR, "words.json"),
   stores: path.join(DB_DIR, "stores.json"),
   comments: path.join(DB_DIR, "comments.json"),
+  public_vocabulary_list: path.join(DB_DIR, "public_vocabulary_list.json"),
+  sys_para: path.join(DB_DIR, "sys_para.json"),
+  feedback_forms: path.join(DB_DIR, "feedback_forms.json"),
 };
 
 // 確保 .local-db 目錄存在
@@ -83,16 +86,9 @@ async function migrateData() {
     writeLocalData(DB_FILES.students, students);
     console.log(`   ✅ 已遷移 ${students.length} 筆 Students\n`);
 
-    // 3. 遷移 Suppliers
+    // 3. 遷移 Suppliers（不包含 stores，因為 stores 會單獨遷移）
     console.log("📦 遷移 Suppliers...");
     const suppliers = await prisma.supplier.findMany({
-      include: {
-        stores: {
-          include: {
-            lcomments: true,
-          },
-        },
-      },
       orderBy: { createdAt: "asc" },
     });
     writeLocalData(DB_FILES.suppliers, suppliers);
@@ -114,12 +110,9 @@ async function migrateData() {
     writeLocalData(DB_FILES.coupons, coupons);
     console.log(`   ✅ 已遷移 ${coupons.length} 筆 Coupons\n`);
 
-    // 6. 遷移 Vocabularies
+    // 6. 遷移 Vocabularies（不包含 words，因為 words 會單獨遷移）
     console.log("📦 遷移 Vocabularies...");
     const vocabularies = await prisma.vocabulary.findMany({
-      include: {
-        words: true,
-      },
       orderBy: { createdAt: "asc" },
     });
     writeLocalData(DB_FILES.vocabularies, vocabularies);
@@ -133,12 +126,9 @@ async function migrateData() {
     writeLocalData(DB_FILES.words, words);
     console.log(`   ✅ 已遷移 ${words.length} 筆 Words\n`);
 
-    // 8. 遷移 Stores
+    // 8. 遷移 Stores（不包含 comments，因為 comments 會單獨遷移）
     console.log("📦 遷移 Stores...");
     const stores = await prisma.store.findMany({
-      include: {
-        lcomments: true,
-      },
       orderBy: { createdAt: "asc" },
     });
     writeLocalData(DB_FILES.stores, stores);
@@ -152,11 +142,48 @@ async function migrateData() {
     writeLocalData(DB_FILES.comments, comments);
     console.log(`   ✅ 已遷移 ${comments.length} 筆 Comments\n`);
 
+    // 10. 遷移 PublicVocabularyList
+    console.log("📦 遷移 PublicVocabularyList...");
+    try {
+      const publicVocabList = await prisma.publicVocabularyList.findMany({
+        orderBy: { updatedAt: "desc" },
+      });
+      writeLocalData(DB_FILES.public_vocabulary_list, publicVocabList);
+      console.log(`   ✅ 已遷移 ${publicVocabList.length} 筆 PublicVocabularyList\n`);
+    } catch (error: any) {
+      console.log(`   ⚠️  跳過 PublicVocabularyList（可能不存在）: ${error.message}\n`);
+    }
+
+    // 11. 遷移 Sys_para
+    console.log("📦 遷移 Sys_para...");
+    try {
+      const sysParas = await prisma.sys_para.findMany({
+        orderBy: { updatedAt: "desc" },
+      });
+      writeLocalData(DB_FILES.sys_para, sysParas);
+      console.log(`   ✅ 已遷移 ${sysParas.length} 筆 Sys_para\n`);
+    } catch (error: any) {
+      console.log(`   ⚠️  跳過 Sys_para（可能不存在）: ${error.message}\n`);
+    }
+
+    // 12. 遷移 FeedbackForms
+    console.log("📦 遷移 FeedbackForms...");
+    try {
+      const feedbackForms = await prisma.feedbackForm.findMany({
+        orderBy: { createdAt: "asc" },
+      });
+      writeLocalData(DB_FILES.feedback_forms, feedbackForms);
+      console.log(`   ✅ 已遷移 ${feedbackForms.length} 筆 FeedbackForms\n`);
+    } catch (error: any) {
+      console.log(`   ⚠️  跳過 FeedbackForms（可能不存在）: ${error.message}\n`);
+    }
+
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.log("✅ 遷移完成！");
     console.log("\n📝 下一步：");
     console.log("   1. 將 .env 中的 DATABASE_local 設置為 true");
-    console.log("   2. 重新啟動應用程式\n");
+    console.log("   2. 重新啟動應用程式");
+    console.log("   3. 資料已保存在 .local-db/ 目錄中\n");
   } catch (error) {
     console.error("\n❌ 遷移過程中發生錯誤：", error);
     throw error;

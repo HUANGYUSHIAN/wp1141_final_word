@@ -24,6 +24,7 @@ import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import ReviewCard from '@/components/ReviewCard'
 import LanguageSelect, { LANGUAGE_OPTIONS } from '@/components/LanguageSelect'
+import { captureEvent } from '@/lib/posthog'
 
 interface Vocabulary {
   vocabularyId: string
@@ -127,8 +128,24 @@ export default function ReviewPage() {
             ...vocab,
             words: wordsData.words || [],
           })
+          
+          // 追蹤複習開始
+          captureEvent("review_started", {
+            vocabulary_id: vocabId,
+            word_count: wordsData.words?.length || 0,
+            lang_use: vocab.langUse,
+            lang_exp: vocab.langExp,
+          })
         } else {
           setSelectedVocab(vocab)
+          
+          // 追蹤複習開始（即使沒有單字）
+          captureEvent("review_started", {
+            vocabulary_id: vocabId,
+            word_count: 0,
+            lang_use: vocab.langUse,
+            lang_exp: vocab.langExp,
+          })
         }
       }
     } catch (error) {
@@ -148,6 +165,12 @@ export default function ReviewPage() {
     return (
       <Box>
         <Button variant="outlined" onClick={() => {
+          // 追蹤複習完成
+          captureEvent("review_completed", {
+            vocabulary_id: selectedVocab.vocabularyId,
+            word_count: selectedVocab.words?.length || 0,
+          })
+          
           setSelectedVocab(null)
           setSelectedVocabId('')
         }} sx={{ mb: 2 }}>

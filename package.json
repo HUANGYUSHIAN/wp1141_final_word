@@ -26,7 +26,9 @@
     "check:oauth": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/check-google-oauth.ts",
     "check:vercel": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/check-vercel-env.ts",
     "test:env": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/test-env.ts",
-    "test:posthog": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/test-posthog.ts"
+    "test:posthog": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/test-posthog.ts",
+    "test:posthog-api": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/test-posthog-api.ts",
+    "check:posthog-permissions": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/check-posthog-permissions.ts"
   },
   "dependencies": {
     "@emotion/cache": "^11.13.3",

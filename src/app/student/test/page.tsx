@@ -45,6 +45,7 @@ import { getLanguageLabel, LANGUAGE_OPTIONS } from '@/components/LanguageSelect'
 import LanguageSelect from '@/components/LanguageSelect'
 import { speakAsync } from '@/lib/utils/speechUtils'
 import { normalizeLanguage } from '@/lib/utils/languageUtils'
+import { captureEvent } from '@/lib/posthog'
 
 type TestStage = 'setup' | 'testing' | 'result'
 
@@ -275,6 +276,15 @@ export default function TestPage() {
     setStage('testing')
     setTestStartTime(Date.now())
     setQuestionStartTime(Date.now())
+    
+    // 追蹤測驗開始
+    captureEvent("test_started", {
+      vocabulary_id: selectedVocab.vocabularyId || selectedVocabId,
+      question_count: questionCount,
+      question_type: questionType,
+      lang_use: selectedLangUse,
+      lang_exp: selectedLangExp,
+    })
   }
 
   const handleAnswer = (answerIndex: number) => {
@@ -422,9 +432,30 @@ export default function TestPage() {
         const data = await response.json()
         setEarnedPoints(data.earnedPoints)
         setTotalPoints(data.totalPoints)
+        
+        // 追蹤測驗完成
+        captureEvent("test_completed", {
+          vocabulary_id: selectedVocab?.vocabularyId || selectedVocabId,
+          question_count: questions.length,
+          correct_count: correctCount,
+          accuracy: accuracy.toFixed(1),
+          total_time_seconds: Math.floor(totalTime / 1000),
+          points_earned: earnedPointsValue,
+        })
       }
     } catch (error) {
       console.error('保存點數失敗:', error)
+      
+      // 即使保存失敗，也追蹤測驗完成
+      captureEvent("test_completed", {
+        vocabulary_id: selectedVocab?.vocabularyId || selectedVocabId,
+        question_count: questions.length,
+        correct_count: correctCount,
+        accuracy: accuracy.toFixed(1),
+        total_time_seconds: Math.floor(totalTime / 1000),
+        points_earned: earnedPointsValue,
+        error: "save_failed",
+      })
     }
   }
 
