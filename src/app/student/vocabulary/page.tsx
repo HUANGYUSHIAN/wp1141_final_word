@@ -147,6 +147,61 @@ export default function StudentVocabularyPage() {
     }
   }, [searchParams, router]);
 
+  // 檢查 URL 參數，如果 view=vocabularyId 則自動打開該單字本詳情
+  useEffect(() => {
+    const viewParam = searchParams.get("view");
+    if (viewParam && !openViewDialog) {
+      // 先載入單字本列表
+      const loadAndView = async () => {
+        await fetchMyVocabularies();
+        
+        // 等待狀態更新後再查找
+        setTimeout(async () => {
+          // 在用戶自己的單字本中尋找
+          const response = await fetch(`/api/student/vocabularies?page=0&limit=100`);
+          if (response.ok) {
+            const data = await response.json();
+            const vocabularies = data.vocabularies || [];
+            const foundVocabulary = vocabularies.find(
+              (vocab: Vocabulary) => vocab.vocabularyId === viewParam
+            );
+            
+            if (foundVocabulary) {
+              handleView(foundVocabulary);
+              // 清除 URL 參數
+              router.replace("/student/vocabulary", { scroll: false });
+              return;
+            }
+          }
+
+          // 如果沒在用戶自己的單字本中找到，嘗試從公開單字本中載入
+          try {
+            const browseResponse = await fetch(
+              `/api/student/vocabularies/browse?page=0&limit=100`
+            );
+            if (browseResponse.ok) {
+              const browseData = await browseResponse.json();
+              const browseVocabularies = browseData.vocabularies || [];
+              const foundBrowseVocabulary = browseVocabularies.find(
+                (vocab: Vocabulary) => vocab.vocabularyId === viewParam
+              );
+              
+              if (foundBrowseVocabulary) {
+                handleView(foundBrowseVocabulary);
+                // 清除 URL 參數
+                router.replace("/student/vocabulary", { scroll: false });
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching browse vocabularies:", error);
+          }
+        }, 100);
+      };
+      
+      loadAndView();
+    }
+  }, [searchParams, router, openViewDialog]);
+
   const fetchMyVocabularies = async () => {
     try {
       setLoading(true);

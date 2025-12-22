@@ -38,7 +38,6 @@ const menuItems = [
   { text: "用戶管理", icon: <PeopleIcon />, path: "/admin/user" },
   { text: "單字本管理", icon: <MenuBookIcon />, path: "/admin/vocabulary" },
   { text: "優惠券管理", icon: <LocalOfferIcon />, path: "/admin/coupon" },
-  { text: "意見回饋", icon: <FeedbackIcon />, path: "/admin/feedback" },
   { text: "統計數據", icon: <BarChartIcon />, path: "/admin/statistics" },
   { text: "設定", icon: <SettingsIcon />, path: "/admin/setting" },
 ];

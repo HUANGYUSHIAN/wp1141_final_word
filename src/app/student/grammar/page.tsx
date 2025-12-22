@@ -336,11 +336,12 @@ export default function GrammarPage() {
                     mr: chat.direction === "ai" ? "auto" : 0,
                     maxWidth: "70%",
                     bgcolor:
-                      chat.direction === "user" ? "primary.light" : "white",
+                      chat.direction === "user" ? "primary.main" : "#2d2d2d",
                     color:
-                      chat.direction === "user" ? "white" : "black",
+                      chat.direction === "user" ? "white" : "#ffffff",
                     border: selectedChats.has(index) ? "2px solid" : "none",
                     borderColor: selectedChats.has(index) ? "primary.main" : "transparent",
+                    boxShadow: chat.direction === "ai" ? "0 2px 4px rgba(0, 0, 0, 0.2)" : "none",
                   }}
                 >
                   <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
@@ -350,9 +351,12 @@ export default function GrammarPage() {
                       sx={{ 
                         mt: -1, 
                         ml: -1,
-                        color: "black",
+                        color: chat.direction === "ai" ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.7)",
                         "&.Mui-checked": {
-                          color: "black",
+                          color: chat.direction === "ai" ? "#4255ff" : "#4255ff",
+                        },
+                        "&:hover": {
+                          bgcolor: chat.direction === "ai" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.1)",
                         },
                       }}
                       size="small"
@@ -368,12 +372,16 @@ export default function GrammarPage() {
                         <Chip
                           label={chat.direction === "user" ? "學生" : "AI"}
                           size="small"
-                          color={chat.direction === "user" ? "primary" : "default"}
+                          sx={{
+                            bgcolor: chat.direction === "user" ? "primary.main" : "rgba(66, 85, 255, 0.2)",
+                            color: chat.direction === "user" ? "white" : "#4255ff",
+                            border: chat.direction === "ai" ? "1px solid rgba(66, 85, 255, 0.3)" : "none",
+                          }}
                         />
                         <Typography 
                           variant="caption" 
                           sx={{ 
-                            color: chat.direction === "user" ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.6)"
+                            color: chat.direction === "user" ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.6)"
                           }}
                         >
                           {new Date(chat.timestamp).toLocaleString()}
@@ -385,7 +393,7 @@ export default function GrammarPage() {
                           whiteSpace: "pre-wrap",
                           "& ol, & ul": { pl: 2 },
                           "& li": { mb: 0.5 },
-                          color: chat.direction === "user" ? "white" : "black",
+                          color: chat.direction === "user" ? "white" : "#ffffff",
                         }}
                       >
                         {chat.content}
@@ -399,6 +407,18 @@ export default function GrammarPage() {
                               size="small"
                               onClick={() => handleSend(reply, "ask")}
                               disabled={sending}
+                              sx={{
+                                color: "#4255ff",
+                                borderColor: "#4255ff",
+                                "&:hover": {
+                                  bgcolor: "rgba(66, 85, 255, 0.1)",
+                                  borderColor: "#4255ff",
+                                },
+                                "&:disabled": {
+                                  color: "rgba(255, 255, 255, 0.3)",
+                                  borderColor: "rgba(255, 255, 255, 0.1)",
+                                },
+                              }}
                             >
                               {reply}
                             </Button>
@@ -416,11 +436,12 @@ export default function GrammarPage() {
               <Paper
                 sx={{
                   p: 2,
-                  bgcolor: "white",
+                  bgcolor: "#2d2d2d",
                   maxWidth: "70%",
+                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
                 }}
               >
-                <CircularProgress size={20} />
+                <CircularProgress size={20} sx={{ color: "#4255ff" }} />
               </Paper>
             </Box>
           )}

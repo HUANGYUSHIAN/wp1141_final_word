@@ -17,7 +17,6 @@ import {
   Button,
   CircularProgress,
   IconButton,
-  InputBase,
   Avatar,
   Divider,
   Menu,
@@ -31,7 +30,6 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import HistoryIcon from "@mui/icons-material/History";
 import LogoutIcon from "@mui/icons-material/Logout";
-import SearchIcon from "@mui/icons-material/Search";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import AddIcon from "@mui/icons-material/Add";
 import FolderIcon from "@mui/icons-material/Folder";
@@ -57,7 +55,6 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const [isStudent, setIsStudent] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [userInfo, setUserInfo] = useState<{ name?: string; email?: string; image?: string } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(true);
@@ -195,14 +192,6 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
     await signOut({ callbackUrl: "/login" });
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // 可以實作搜尋功能
-      console.log("Search:", searchQuery);
-    }
-  };
-
   if (!mounted) {
     return null;
   }
@@ -250,41 +239,6 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
               <MenuIcon />
             </IconButton>
 
-            {/* 搜尋欄 */}
-            <Box
-              component="form"
-              onSubmit={handleSearch}
-              sx={{
-                flex: 1,
-                maxWidth: 600,
-                position: "relative",
-                bgcolor: "rgba(255, 255, 255, 0.1)",
-                borderRadius: "4px",
-                "&:hover": {
-                  bgcolor: "rgba(255, 255, 255, 0.15)",
-                },
-                "&:focus-within": {
-                  bgcolor: "rgba(255, 255, 255, 0.2)",
-                },
-                transition: "background-color 0.2s",
-              }}
-            >
-              <InputBase
-                placeholder="透過搜尋更快找到它"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                sx={{
-                  color: "inherit",
-                  width: "100%",
-                  pl: 4,
-                  pr: 1,
-                  py: 1,
-                }}
-                startAdornment={
-                  <SearchIcon sx={{ position: "absolute", left: 12, color: "text.secondary" }} />
-                }
-              />
-            </Box>
           </Box>
 
           {/* 右側按鈕 - 移到最右邊 */}
