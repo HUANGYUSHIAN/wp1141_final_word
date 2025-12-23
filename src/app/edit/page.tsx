@@ -129,13 +129,24 @@ function EditContent() {
               }
             }
           } catch (error) {
+            // 保持 console.error 不變，讓 Vercel 後台能看到錯誤
             console.error("Error checking user data:", error);
+            // 顯示用戶友好的提示
+            setError("待DB回應中...");
+          }
+          
+          // 如果還沒確認，顯示等待提示
+          if (!confirmed && retries < 10) {
+            setError("待DB回應中...");
           }
           
           // 等待 300ms 後再重試
           await new Promise(resolve => setTimeout(resolve, 300));
           retries--;
         }
+        
+        // 清除等待提示
+        setError("");
         
         // 無論確認成功與否，都直接重定向（資料庫已更新，只是可能還沒同步）
         // 使用 window.location.replace 避免在歷史記錄中留下 /edit 頁面

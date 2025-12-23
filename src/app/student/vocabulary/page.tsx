@@ -129,6 +129,22 @@ export default function StudentVocabularyPage() {
     fetchMyVocabularies();
   }, [page, rowsPerPage]);
 
+  // 輪詢檢查正在生成的單字本狀態
+  useEffect(() => {
+    const generatingVocabularies = myVocabularies.filter(
+      (v) => v.wordCount === 0 && v.copyrights === "由 AI 生成"
+    );
+
+    if (generatingVocabularies.length > 0) {
+      // 每3秒檢查一次正在生成的單字本狀態
+      const interval = setInterval(() => {
+        fetchMyVocabularies();
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }
+  }, [myVocabularies]);
+
   // 檢查 URL 參數，如果 create=true 則自動打開新增對話框
   useEffect(() => {
     const createParam = searchParams.get("create");

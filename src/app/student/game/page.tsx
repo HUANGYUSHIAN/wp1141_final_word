@@ -100,6 +100,7 @@ export default function GamePage() {
   const [resetGame, setResetGame] = useState(false)
   const [gameErrors, setGameErrors] = useState<any>(null) // 存储游戏错误信息
   const [showErrorDialog, setShowErrorDialog] = useState(false)
+  const [showWordCountDialog, setShowWordCountDialog] = useState(false)
 
   useEffect(() => {
     if (!session) {
@@ -113,7 +114,7 @@ export default function GamePage() {
   useEffect(() => {
     if (selectedLangUse && selectedLangExp) {
       const filtered = vocabularies.filter(
-        vocab => vocab.langUse === selectedLangUse && vocab.langExp === selectedLangExp
+        vocab => vocab.langUse === selectedLangUse && vocab.langExp === selectedLangExp && vocab.wordCount > 20
       )
       setFilteredVocabularies(filtered)
       if (filtered.length === 0) {
@@ -192,6 +193,13 @@ export default function GamePage() {
   const handleStartGame = () => {
     if (!selectedVocab || !selectedVocab.words || selectedVocab.words.length === 0) {
       alert('請選擇有效的單字本')
+      return
+    }
+
+    // 檢查單字本單字數是否大於20
+    const wordCount = selectedVocab.words.length
+    if (wordCount <= 20) {
+      setShowWordCountDialog(true)
       return
     }
 
@@ -697,6 +705,21 @@ export default function GamePage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowErrorDialog(false)}>關閉</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 單字數不足提示對話框 */}
+      <Dialog open={showWordCountDialog} onClose={() => setShowWordCountDialog(false)}>
+        <DialogTitle>單字數不足</DialogTitle>
+        <DialogContent>
+          <Typography>
+            單字本單字數不足20，請選擇其他單字本。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowWordCountDialog(false)} variant="contained">
+            確定
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

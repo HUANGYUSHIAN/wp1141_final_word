@@ -118,6 +118,7 @@ export default function TestPage() {
   const [totalPoints, setTotalPoints] = useState<number | null>(null)
   const [pointsPerCorrect, setPointsPerCorrect] = useState(10)
   const [showSetupDialog, setShowSetupDialog] = useState(false)
+  const [showWordCountDialog, setShowWordCountDialog] = useState(false)
 
   useEffect(() => {
     if (!session) {
@@ -238,6 +239,13 @@ export default function TestPage() {
 
     if (!selectedVocab || !selectedVocab.words || selectedVocab.words.length === 0) {
       alert('請選擇有效的單字本')
+      return
+    }
+
+    // 檢查單字本單字數是否大於20
+    const wordCount = selectedVocab.words.length
+    if (wordCount <= 20) {
+      setShowWordCountDialog(true)
       return
     }
 
@@ -578,7 +586,8 @@ export default function TestPage() {
                             size="small"
                             onClick={() => handleVocabSelect(vocabulary.vocabularyId)}
                             color="primary"
-                            title="選擇此單字本"
+                            title={vocabulary.wordCount <= 20 ? "單字數不足20，無法選擇" : "選擇此單字本"}
+                            disabled={vocabulary.wordCount <= 20}
                           >
                             <AddIcon />
                           </IconButton>
@@ -904,6 +913,21 @@ export default function TestPage() {
             </Paper>
           )}
         </Box>
+
+        {/* 單字數不足提示對話框 */}
+        <Dialog open={showWordCountDialog} onClose={() => setShowWordCountDialog(false)}>
+          <DialogTitle>單字數不足</DialogTitle>
+          <DialogContent>
+            <Typography>
+              單字本單字數不足20，請選擇其他單字本。
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowWordCountDialog(false)} variant="contained">
+              確定
+            </Button>
+          </DialogActions>
+        </Dialog>
     </Box>
   )
 }
