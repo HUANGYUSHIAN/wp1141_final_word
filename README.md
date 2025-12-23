@@ -15,6 +15,9 @@ https://word-war-app.vercel.app/
 ## Demo影片(05:59 < 06:00)
 https://youtu.be/KEOIPCzw6I0
 
+## FB貼文
+https://www.facebook.com/groups/NTURicWebProg/permalink/2643819585965945/?mibextid=wwXIfr&rdid=roscZadUrTad6RJN#
+
 ## 📋 專案概述
 
 本平台提供以下服務：
